@@ -1,0 +1,427 @@
+Index: gui/login_window.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># gui/login_window.py\nimport customtkinter as ctk\nfrom tkinter import messagebox\nfrom database.db_manager import DatabaseManager\nfrom typing import Optional, Tuple\n\n# Configuración de tema\nctk.set_appearance_mode(\"dark\")\nctk.set_default_color_theme(\"blue\")\n\n\nclass LoginWindow:\n    def __init__(self, root):\n        self.root = root\n        self.root.title(\"Sistema Hotel - Login\")\n        self.root.geometry(\"1000x650\")\n        self.root.resizable(False, False)\n\n        # Variables\n        self.db: Optional[DatabaseManager] = None\n        self.intentos_fallidos = 0\n        self.max_intentos = 3\n        self.password_visible = False\n\n        # Inicializar\n        self._inicializar_db()\n        self._centrar_ventana()\n        self._crear_widgets()\n\n        # Focus inicial\n        self.entry_usuario.focus()\n\n        # Protocolo de cierre\n        self.root.protocol(\"WM_DELETE_WINDOW\", self._on_closing)\n\n    def _inicializar_db(self):\n        \"\"\"Inicializa la conexión a la base de datos con manejo de errores\"\"\"\n        try:\n            self.db = DatabaseManager()\n        except Exception as e:\n            messagebox.showerror(\n                \"Error de Conexión\",\n                f\"No se pudo conectar a la base de datos:\\n{str(e)}\"\n            )\n            self.root.quit()\n\n    def _centrar_ventana(self):\n        \"\"\"Centra la ventana en la pantalla\"\"\"\n        self.root.update_idletasks()\n        width = self.root.winfo_width()\n        height = self.root.winfo_height()\n        x = (self.root.winfo_screenwidth() // 2) - (width // 2)\n        y = (self.root.winfo_screenheight() // 2) - (height // 2)\n        self.root.geometry(f'{width}x{height}+{x}+{y}')\n\n    def _crear_widgets(self):\n        \"\"\"Crea todos los widgets de la interfaz\"\"\"\n        # Container principal\n        container = ctk.CTkFrame(self.root, fg_color=\"transparent\")\n        container.pack(fill=\"both\", expand=True)\n\n        # Panel izquierdo - Imagen/Branding\n        panel_izq = ctk.CTkFrame(container, fg_color=(\"#2C3E50\", \"#1a252f\"), corner_radius=0)\n        panel_izq.pack(side=\"left\", fill=\"both\", expand=True)\n\n        self._crear_panel_branding(panel_izq)\n\n        # Panel derecho - Formulario\n        panel_der = ctk.CTkFrame(container, fg_color=(\"#ECF0F1\", \"#2b2b2b\"), corner_radius=0, width=450)\n        panel_der.pack(side=\"right\", fill=\"both\", padx=0, pady=0)\n        panel_der.pack_propagate(False)\n\n        self._crear_panel_login(panel_der)\n\n    def _crear_panel_branding(self, parent):\n        \"\"\"Crea el panel de branding con diseño atractivo\"\"\"\n        # Container centrado\n        content = ctk.CTkFrame(parent, fg_color=\"transparent\")\n        content.place(relx=0.5, rely=0.5, anchor=\"center\")\n\n        # Icono grande del hotel\n        icon_label = ctk.CTkLabel(\n            content,\n            text=\"\uD83C\uDFE8\",\n            font=(\"Segoe UI\", 120),\n        )\n        icon_label.pack(pady=(0, 30))\n\n        # Título principal\n        titulo = ctk.CTkLabel(\n            content,\n            text=\"HOTEL AMIGUES\",\n            font=(\"Segoe UI\", 42, \"bold\"),\n            text_color=(\"#ECF0F1\", \"#ECF0F1\")\n        )\n        titulo.pack(pady=(0, 15))\n\n        # Línea decorativa\n        linea = ctk.CTkFrame(content, height=3, width=200, fg_color=(\"#3498DB\", \"#3498DB\"))\n        linea.pack(pady=(0, 15))\n\n        # Subtítulo\n        subtitulo = ctk.CTkLabel(\n            content,\n            text=\"Sistema de Gestión Hotelera\",\n            font=(\"Segoe UI\", 18),\n            text_color=(\"#BDC3C7\", \"#BDC3C7\")\n        )\n        subtitulo.pack(pady=(0, 50))\n\n        # Features\n        features = [\n            \"✓ Gestión de Reservas\",\n            \"✓ Control de Habitaciones\",\n            \"✓ Administración de Personal\",\n            \"✓ Reportes en Tiempo Real\"\n        ]\n\n        for feature in features:\n            feature_label = ctk.CTkLabel(\n                content,\n                text=feature,\n                font=(\"Segoe UI\", 14),\n                text_color=(\"#95A5A6\", \"#95A5A6\"),\n                anchor=\"w\"\n            )\n            feature_label.pack(pady=5, anchor=\"w\", padx=20)\n\n    def _crear_panel_login(self, parent):\n        \"\"\"Crea el panel de login con diseño moderno\"\"\"\n        # Container del formulario\n        form_container = ctk.CTkFrame(parent, fg_color=\"transparent\")\n        form_container.place(relx=0.5, rely=0.5, anchor=\"center\")\n\n        # Header del formulario\n        header = ctk.CTkLabel(\n            form_container,\n            text=\"Iniciar Sesión\",\n            font=(\"Segoe UI\", 32, \"bold\"),\n            text_color=(\"#2C3E50\", \"#ECF0F1\")\n        )\n        header.pack(pady=(0, 10))\n\n        subheader = ctk.CTkLabel(\n            form_container,\n            text=\"Ingresa tus credenciales para continuar\",\n            font=(\"Segoe UI\", 12),\n            text_color=(\"#7F8C8D\", \"#95A5A6\")\n        )\n        subheader.pack(pady=(0, 40))\n\n        # Campo Usuario\n        self._crear_campo_usuario(form_container)\n\n        # Campo Contraseña\n        self._crear_campo_password(form_container)\n\n        # Checkbox recordar\n        self.check_recordar = ctk.CTkCheckBox(\n            form_container,\n            text=\"Recordar mi usuario\",\n            font=(\"Segoe UI\", 11),\n            checkbox_width=20,\n            checkbox_height=20,\n            corner_radius=5\n        )\n        self.check_recordar.pack(pady=(10, 25), anchor=\"w\", padx=5)\n\n        # Botón Ingresar\n        self.btn_login = ctk.CTkButton(\n            form_container,\n            text=\"INGRESAR\",\n            width=350,\n            height=50,\n            font=(\"Segoe UI\", 15, \"bold\"),\n            corner_radius=12,\n            fg_color=(\"#27AE60\", \"#27AE60\"),\n            hover_color=(\"#229954\", \"#229954\"),\n            command=self.validar_login\n        )\n        self.btn_login.pack(pady=(0, 15))\n\n        # Botón Limpiar\n        btn_limpiar = ctk.CTkButton(\n            form_container,\n            text=\"Limpiar campos\",\n            width=350,\n            height=40,\n            font=(\"Segoe UI\", 12),\n            corner_radius=12,\n            fg_color=\"transparent\",\n            border_width=2,\n            border_color=(\"#BDC3C7\", \"#4A4A4A\"),\n            text_color=(\"#7F8C8D\", \"#95A5A6\"),\n            hover_color=(\"#ECF0F1\", \"#3A3A3A\"),\n            command=self._limpiar_campos\n        )\n        btn_limpiar.pack(pady=(0, 30))\n\n        # Footer\n        footer_frame = ctk.CTkFrame(form_container, fg_color=\"transparent\")\n        footer_frame.pack(pady=(20, 0))\n\n        # Botón cambiar tema\n        btn_tema = ctk.CTkButton(\n            footer_frame,\n            text=\"\uD83C\uDF13\",\n            width=40,\n            height=40,\n            font=(\"Segoe UI\", 18),\n            corner_radius=20,\n            fg_color=\"transparent\",\n            border_width=2,\n            border_color=(\"#BDC3C7\", \"#4A4A4A\"),\n            hover_color=(\"#ECF0F1\", \"#3A3A3A\"),\n            command=self._toggle_theme\n        )\n        btn_tema.pack(side=\"left\", padx=5)\n\n        # Info adicional\n        info_label = ctk.CTkLabel(\n            footer_frame,\n            text=\"¿Problemas para ingresar? Contacta al administrador\",\n            font=(\"Segoe UI\", 9),\n            text_color=(\"#95A5A6\", \"#7F8C8D\")\n        )\n        info_label.pack(side=\"left\", padx=10)\n\n    def _crear_campo_usuario(self, parent):\n        \"\"\"Crea el campo de usuario con diseño mejorado\"\"\"\n        label_usuario = ctk.CTkLabel(\n            parent,\n            text=\"Usuario\",\n            font=(\"Segoe UI\", 13, \"bold\"),\n            text_color=(\"#2C3E50\", \"#ECF0F1\"),\n            anchor=\"w\"\n        )\n        label_usuario.pack(anchor=\"w\", pady=(0, 8))\n\n        self.entry_usuario = ctk.CTkEntry(\n            parent,\n            placeholder_text=\"Ingresa tu nombre de usuario\",\n            width=350,\n            height=50,\n            font=(\"Segoe UI\", 13),\n            corner_radius=12,\n            border_width=2,\n            border_color=(\"#BDC3C7\", \"#4A4A4A\")\n        )\n        self.entry_usuario.pack(pady=(0, 20))\n\n    def _crear_campo_password(self, parent):\n        \"\"\"Crea el campo de contraseña con botón mostrar/ocultar\"\"\"\n        label_password = ctk.CTkLabel(\n            parent,\n            text=\"Contraseña\",\n            font=(\"Segoe UI\", 13, \"bold\"),\n            text_color=(\"#2C3E50\", \"#ECF0F1\"),\n            anchor=\"w\"\n        )\n        label_password.pack(anchor=\"w\", pady=(0, 8))\n\n        # Frame contenedor\n        password_frame = ctk.CTkFrame(parent, fg_color=\"transparent\")\n        password_frame.pack(pady=(0, 5))\n\n        self.entry_password = ctk.CTkEntry(\n            password_frame,\n            placeholder_text=\"Ingresa tu contraseña\",\n            width=295,\n            height=50,\n            font=(\"Segoe UI\", 13),\n            show=\"•\",\n            corner_radius=12,\n            border_width=2,\n            border_color=(\"#BDC3C7\", \"#4A4A4A\")\n        )\n        self.entry_password.pack(side=\"left\", padx=(0, 5))\n        self.entry_password.bind('<Return>', lambda e: self.validar_login())\n\n        # Botón mostrar/ocultar\n        self.btn_mostrar = ctk.CTkButton(\n            password_frame,\n            text=\"\uD83D\uDC41\",\n            width=50,\n            height=50,\n            font=(\"Segoe UI\", 18),\n            corner_radius=12,\n            fg_color=\"transparent\",\n            border_width=2,\n            border_color=(\"#BDC3C7\", \"#4A4A4A\"),\n            hover_color=(\"#ECF0F1\", \"#3A3A3A\"),\n            command=self._toggle_password_visibility\n        )\n        self.btn_mostrar.pack(side=\"left\")\n\n    def _toggle_password_visibility(self):\n        \"\"\"Alterna la visibilidad de la contraseña\"\"\"\n        if self.entry_password.cget(\"show\") == \"•\":\n            self.entry_password.configure(show=\"\")\n            self.btn_mostrar.configure(text=\"\uD83D\uDE48\")\n        else:\n            self.entry_password.configure(show=\"•\")\n            self.btn_mostrar.configure(text=\"\uD83D\uDC41\")\n\n    def _toggle_theme(self):\n        \"\"\"Cambia entre modo oscuro y claro\"\"\"\n        nuevo_modo = \"light\" if ctk.get_appearance_mode() == \"Dark\" else \"dark\"\n        ctk.set_appearance_mode(nuevo_modo)\n\n    def _limpiar_campos(self):\n        \"\"\"Limpia los campos de entrada\"\"\"\n        self.entry_usuario.delete(0, 'end')\n        self.entry_password.delete(0, 'end')\n        self.entry_usuario.focus()\n\n    def _validar_campos(self) -> Tuple[bool, str, str]:\n        \"\"\"Valida los campos de entrada\"\"\"\n        usuario = self.entry_usuario.get().strip()\n        password = self.entry_password.get().strip()\n\n        if not usuario:\n            messagebox.showwarning(\"Advertencia\", \"Por favor ingrese su usuario\")\n            self.entry_usuario.focus()\n            return False, \"\", \"\"\n\n        if not password:\n            messagebox.showwarning(\"Advertencia\", \"Por favor ingrese su contraseña\")\n            self.entry_password.focus()\n            return False, \"\", \"\"\n\n        if len(usuario) < 3:\n            messagebox.showwarning(\"Advertencia\", \"El usuario debe tener al menos 3 caracteres\")\n            return False, \"\", \"\"\n\n        return True, usuario, password\n\n    def _bloquear_login(self):\n        \"\"\"Bloquea temporalmente el login\"\"\"\n        self.btn_login.configure(\n            state=\"disabled\",\n            text=\"BLOQUEADO\",\n            fg_color=(\"#E74C3C\", \"#C0392B\")\n        )\n        messagebox.showerror(\n            \"Cuenta Bloqueada\",\n            \"Demasiados intentos fallidos.\\nPor favor contacte al administrador.\"\n        )\n\n    def validar_login(self):\n        \"\"\"Valida las credenciales del usuario\"\"\"\n        es_valido, usuario, password = self._validar_campos()\n        if not es_valido:\n            return\n\n        if self.intentos_fallidos >= self.max_intentos:\n            self._bloquear_login()\n            return\n\n        try:\n            empleado = self.db.validar_login(usuario, password)\n\n            if empleado:\n                self._login_exitoso(empleado)\n            else:\n                self._login_fallido()\n\n        except Exception as e:\n            messagebox.showerror(\"Error\", f\"Error al validar credenciales:\\n{str(e)}\")\n\n    def _login_exitoso(self, empleado):\n        \"\"\"Maneja un login exitoso\"\"\"\n        empleado_id, nombre, apellido, puesto = empleado\n        privilegio = self._obtener_privilegio(empleado_id)\n\n        # Cerrar BD antes de cambiar ventanas\n        if self.db:\n            self.db.cerrar()\n            self.db = None\n\n        # Ocultar ventana de login en lugar de destruirla\n        self.root.withdraw()\n\n        # Abrir dashboard\n        self._abrir_dashboard(nombre, apellido, puesto, privilegio)\n\n    def _login_fallido(self):\n        \"\"\"Maneja un login fallido\"\"\"\n        self.intentos_fallidos += 1\n        intentos_restantes = self.max_intentos - self.intentos_fallidos\n\n        if intentos_restantes > 0:\n            messagebox.showerror(\n                \"Error de Autenticación\",\n                f\"Usuario o contraseña incorrectos.\\nIntentos restantes: {intentos_restantes}\"\n            )\n            self.entry_password.delete(0, 'end')\n            self.entry_password.focus()\n        else:\n            self._bloquear_login()\n\n    def _obtener_privilegio(self, empleado_id: int) -> str:\n        \"\"\"Obtiene el privilegio del empleado\"\"\"\n        try:\n            empleados = self.db.obtener_empleados()\n            for emp in empleados:\n                if emp[0] == empleado_id:\n                    return emp[7] if emp[7] else \"Administrador\"\n            return \"Administrador\"\n        except Exception:\n            return \"Administrador\"\n\n    def _abrir_dashboard(self, nombre: str, apellido: str, puesto: str, privilegio: str):\n        \"\"\"Abre la ventana del dashboard\"\"\"\n        from gui.dashboard_window import DashboardWindow\n\n        try:\n            # Crear nueva ventana toplevel\n            dashboard_window = ctk.CTkToplevel(self.root)\n            dashboard_window.withdraw()  # Ocultar mientras se configura\n\n            # Crear dashboard\n            dashboard = DashboardWindow(\n                dashboard_window,\n                nombre,\n                apellido,\n                puesto,\n                privilegio,\n                self  # Pasar referencia al login\n            )\n\n            # Mostrar dashboard\n            dashboard_window.deiconify()\n\n            # Cuando se cierre el dashboard, mostrar login nuevamente\n            dashboard_window.protocol(\"WM_DELETE_WINDOW\", lambda: self._on_dashboard_close(dashboard_window))\n\n        except Exception as e:\n            messagebox.showerror(\"Error\", f\"No se pudo abrir el dashboard:\\n{str(e)}\")\n            self.root.deiconify()  # Mostrar login de nuevo\n\n    def _on_dashboard_close(self, dashboard_window):\n        \"\"\"Maneja el cierre del dashboard\"\"\"\n        dashboard_window.destroy()\n        self._limpiar_campos()\n        self.intentos_fallidos = 0\n        self.root.deiconify()  # Mostrar login de nuevo\n\n    def _on_closing(self):\n        \"\"\"Maneja el cierre de la ventana\"\"\"\n        if self.db:\n            try:\n                self.db.cerrar()\n            except:\n                pass\n        self.root.quit()\n\n    def __del__(self):\n        \"\"\"Destructor para cerrar la conexión a la BD\"\"\"\n        if self.db:\n            try:\n                self.db.cerrar()\n            except Exception:\n                pass
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/gui/login_window.py b/gui/login_window.py
+--- a/gui/login_window.py	(revision 7223df3a842a1e41f78e94f96cb446e4516ff55c)
++++ b/gui/login_window.py	(date 1767733584190)
+@@ -78,13 +78,50 @@
+         content = ctk.CTkFrame(parent, fg_color="transparent")
+         content.place(relx=0.5, rely=0.5, anchor="center")
+ 
+-        # Icono grande del hotel
+-        icon_label = ctk.CTkLabel(
+-            content,
+-            text="🏨",
+-            font=("Segoe UI", 120),
+-        )
+-        icon_label.pack(pady=(0, 30))
++        # Cargar y mostrar imagen
++        try:
++            from PIL import Image, ImageDraw
++            import os
++
++            # Obtener ruta del proyecto (carpeta raíz)
++            current_dir = os.path.dirname(os.path.abspath(__file__))
++            project_root = os.path.dirname(current_dir)
++            imagen_path = os.path.join(project_root, "assets", "images", "cinnamon_login.png")
++
++            imagen_pil = Image.open(imagen_path)
++
++            # Redimensionar imagen manteniendo aspecto
++            ancho_max = 350
++            alto_max = 600
++            imagen_pil.thumbnail((ancho_max, alto_max), Image.Resampling.LANCZOS)
++
++            # Crear imagen redondeada
++            imagen_pil = self._hacer_imagen_circular(imagen_pil)
++
++            # Convertir a CTkImage
++            imagen_ctk = ctk.CTkImage(
++                light_image=imagen_pil,
++                dark_image=imagen_pil,
++                size=imagen_pil.size
++            )
++
++            # Mostrar imagen
++            label_imagen = ctk.CTkLabel(
++                content,
++                image=imagen_ctk,
++                text=""
++            )
++            label_imagen.pack(pady=(0, 30))
++
++        except Exception as e:
++            # Si falla cargar la imagen, usar emoji como fallback
++            print(f"Error al cargar imagen: {e}")
++            print(f"Ruta intentada: {imagen_path if 'imagen_path' in locals() else 'No se pudo determinar'}")
++            ctk.CTkLabel(
++                content,
++                text="🏨",
++                font=("Segoe UI", 120)
++            ).pack(pady=(0, 30))
+ 
+         # Título principal
+         titulo = ctk.CTkLabel(
+@@ -126,6 +163,41 @@
+             )
+             feature_label.pack(pady=5, anchor="w", padx=20)
+ 
++    def _hacer_imagen_circular(self, imagen):
++        """Convierte una imagen en perfectamente circular"""
++        from PIL import Image, ImageDraw
++
++        # Convertir a RGBA si no lo es
++        if imagen.mode != 'RGBA':
++            imagen = imagen.convert('RGBA')
++
++        # Hacer la imagen cuadrada (recortar al centro)
++        ancho, alto = imagen.size
++        tamaño = min(ancho, alto)
++
++        # Calcular coordenadas para recortar al centro
++        left = (ancho - tamaño) // 2
++        top = (alto - tamaño) // 2
++        right = left + tamaño
++        bottom = top + tamaño
++
++        # Recortar imagen a cuadrado
++        imagen_cuadrada = imagen.crop((left, top, right, bottom))
++
++        # Crear máscara circular perfecta
++        mascara = Image.new('L', (tamaño, tamaño), 0)
++        draw = ImageDraw.Draw(mascara)
++
++        # Dibujar círculo perfecto
++        draw.ellipse((0, 0, tamaño, tamaño), fill=255)
++
++        # Aplicar máscara
++        output = Image.new('RGBA', (tamaño, tamaño), (0, 0, 0, 0))
++        output.paste(imagen_cuadrada, (0, 0))
++        output.putalpha(mascara)
++
++        return output
++
+     def _crear_panel_login(self, parent):
+         """Crea el panel de login con diseño moderno"""
+         # Container del formulario
+@@ -373,12 +445,8 @@
+         empleado_id, nombre, apellido, puesto = empleado
+         privilegio = self._obtener_privilegio(empleado_id)
+ 
+-        # Cerrar BD antes de cambiar ventanas
+-        if self.db:
+-            self.db.cerrar()
+-            self.db = None
+-
+-        # Ocultar ventana de login en lugar de destruirla
++        # NO cerrar BD aquí - se cerrará cuando el dashboard cierre
++        # Solo ocultar ventana de login
+         self.root.withdraw()
+ 
+         # Abrir dashboard
+@@ -444,6 +512,16 @@
+         dashboard_window.destroy()
+         self._limpiar_campos()
+         self.intentos_fallidos = 0
++
++        # Reinicializar la conexión a la base de datos
++        try:
++            self.db = DatabaseManager()
++        except Exception as e:
++            messagebox.showerror(
++                "Error de Conexión",
++                f"No se pudo reconectar a la base de datos:\n{str(e)}"
++            )
++
+         self.root.deiconify()  # Mostrar login de nuevo
+ 
+     def _on_closing(self):
+@@ -457,7 +535,7 @@
+ 
+     def __del__(self):
+         """Destructor para cerrar la conexión a la BD"""
+-        if self.db:
++        if hasattr(self, 'db') and self.db:
+             try:
+                 self.db.cerrar()
+             except Exception:
+Index: gui/dashboard_window.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># gui/dashboard_window.py\nimport customtkinter as ctk\nfrom tkinter import messagebox\nfrom gui.habitaciones_window import HabitacionesWindow\nfrom gui.empleados_window import EmpleadosWindow\nfrom gui.reservas_window import ReservasWindow\nfrom gui.huespedes_window import HuespedesWindow\nfrom database.db_manager import DatabaseManager\n\n\nclass DashboardWindow:\n    def __init__(self, root, nombre_empleado, apellido_empleado, puesto, privilegio, login_window=None):\n        self.root = root\n        self.nombre_empleado = nombre_empleado\n        self.apellido_empleado = apellido_empleado\n        self.puesto = puesto\n        self.privilegio = privilegio\n        self.login_window = login_window\n\n        # Base de datos\n        self.db = DatabaseManager()\n\n        # Configuración de ventana\n        self.root.title(\"Sistema Hotel Amigues - Dashboard\")\n        self.root.geometry(\"1400x800\")\n\n        # Variables\n        self.boton_activo = None\n\n        # Colores del tema\n        self.COLORES = {\n            'sidebar': (\"#2C3E50\", \"#1a252f\"),\n            'sidebar_hover': (\"#34495E\", \"#243342\"),\n            'sidebar_active': (\"#3498DB\", \"#2980B9\"),\n            'content_bg': (\"#ECF0F1\", \"#2b2b2b\"),\n            'card_bg': (\"#FFFFFF\", \"#3a3a3a\"),\n            'primary': \"#3498DB\",\n            'success': \"#27AE60\",\n            'warning': \"#F39C12\",\n            'danger': \"#E74C3C\",\n            'info': \"#3498DB\",\n        }\n\n        self._crear_interfaz()\n        self.mostrar_inicio()\n\n        # Protocolo de cierre\n        self.root.protocol(\"WM_DELETE_WINDOW\", self._on_closing)\n\n    def _crear_interfaz(self):\n        \"\"\"Crea la interfaz principal del dashboard\"\"\"\n        # Container principal\n        main_container = ctk.CTkFrame(self.root, fg_color=\"transparent\")\n        main_container.pack(fill=\"both\", expand=True)\n\n        # Sidebar\n        self._crear_sidebar(main_container)\n\n        # Área de contenido\n        self._crear_area_contenido(main_container)\n\n    def _crear_sidebar(self, parent):\n        \"\"\"Crea la barra lateral de navegación\"\"\"\n        self.sidebar = ctk.CTkFrame(\n            parent,\n            width=280,\n            corner_radius=0,\n            fg_color=self.COLORES['sidebar']\n        )\n        self.sidebar.pack(side=\"left\", fill=\"y\")\n        self.sidebar.pack_propagate(False)\n\n        # Header del sidebar\n        self._crear_sidebar_header()\n\n        # Perfil del usuario\n        self._crear_perfil_usuario()\n\n        # Separador\n        ctk.CTkFrame(\n            self.sidebar,\n            height=2,\n            fg_color=self.COLORES['sidebar_active']\n        ).pack(fill=\"x\", padx=20, pady=20)\n\n        # Menú de navegación\n        self._crear_menu_navegacion()\n\n        # Espaciador\n        ctk.CTkFrame(\n            self.sidebar,\n            fg_color=\"transparent\"\n        ).pack(fill=\"both\", expand=True)\n\n    def _crear_sidebar_header(self):\n        \"\"\"Crea el header del sidebar con logo y título\"\"\"\n        header = ctk.CTkFrame(self.sidebar, fg_color=\"transparent\")\n        header.pack(fill=\"x\", padx=20, pady=(30, 20))\n\n        # Logo\n        ctk.CTkLabel(\n            header,\n            text=\"\uD83C\uDFE8\",\n            font=(\"Segoe UI\", 40)\n        ).pack()\n\n        # Título\n        ctk.CTkLabel(\n            header,\n            text=\"HOTEL AMIGUES\",\n            font=(\"Segoe UI\", 18, \"bold\")\n        ).pack(pady=(10, 0))\n\n        # Subtítulo\n        ctk.CTkLabel(\n            header,\n            text=\"Sistema de Gestión\",\n            font=(\"Segoe UI\", 11),\n            text_color=(\"#BDC3C7\", \"#95A5A6\")\n        ).pack()\n\n    def _crear_perfil_usuario(self):\n        \"\"\"Crea la sección de perfil del usuario\"\"\"\n        perfil = ctk.CTkFrame(\n            self.sidebar,\n            fg_color=(\"#34495E\", \"#243342\"),\n            corner_radius=12\n        )\n        perfil.pack(fill=\"x\", padx=20, pady=(0, 10))\n\n        # Contenido del perfil\n        content = ctk.CTkFrame(perfil, fg_color=\"transparent\")\n        content.pack(fill=\"x\", padx=15, pady=15)\n\n        # Avatar\n        ctk.CTkLabel(\n            content,\n            text=\"\uD83D\uDC64\",\n            font=(\"Segoe UI\", 32)\n        ).pack()\n\n        # Nombre\n        ctk.CTkLabel(\n            content,\n            text=f\"{self.nombre_empleado} {self.apellido_empleado}\",\n            font=(\"Segoe UI\", 13, \"bold\")\n        ).pack(pady=(8, 5))\n\n        # Puesto\n        ctk.CTkLabel(\n            content,\n            text=self.puesto,\n            font=(\"Segoe UI\", 10),\n            text_color=(\"#95A5A6\", \"#7F8C8D\")\n        ).pack(pady=(0, 8))\n\n        # Badge de privilegio\n        badge_color = self.COLORES['danger'] if self.privilegio == \"Administrador\" else self.COLORES['info']\n        ctk.CTkLabel(\n            content,\n            text=self.privilegio,\n            font=(\"Segoe UI\", 9, \"bold\"),\n            fg_color=badge_color,\n            corner_radius=6,\n            padx=12,\n            pady=4\n        ).pack(pady=(0, 8))\n\n        # Botón de cerrar sesión\n        ctk.CTkButton(\n            self.sidebar,\n            text=\"  \uD83D\uDEAA   Cerrar Sesión\",\n            font=(\"Segoe UI\", 13),\n            height=45,\n            corner_radius=10,\n            fg_color=self.COLORES['danger'],\n            hover_color=(\"#C0392B\", \"#A93226\"),\n            anchor=\"w\",\n            command=self.salir\n        ).pack(padx=20, pady=(0, 10))\n\n    def _crear_menu_navegacion(self):\n        \"\"\"Crea el menú de navegación\"\"\"\n        # Definir elementos del menú\n        menu_items = [\n            {\n                \"texto\": \"Inicio\",\n                \"icono\": \"\uD83C\uDFE0\",\n                \"comando\": self.mostrar_inicio,\n                \"permiso\": True\n            },\n            {\n                \"texto\": \"Habitaciones\",\n                \"icono\": \"\uD83D\uDECF\uFE0F\",\n                \"comando\": self.abrir_habitaciones,\n                \"permiso\": True\n            },\n            {\n                \"texto\": \"Reservas\",\n                \"icono\": \"\uD83D\uDCC5\",\n                \"comando\": self.abrir_reservas,\n                \"permiso\": True\n            },\n            {\n                \"texto\": \"Huéspedes\",\n                \"icono\": \"\uD83D\uDC65\",\n                \"comando\": self.abrir_huesped,\n                \"permiso\": True\n            },\n            {\n                \"texto\": \"Empleados\",\n                \"icono\": \"\uD83D\uDCBC\",\n                \"comando\": self.abrir_empleados,\n                \"permiso\": self.privilegio == \"Administrador\"\n            },\n            {\n                \"texto\": \"Reportes\",\n                \"icono\": \"\uD83D\uDCCA\",\n                \"comando\": self.abrir_reportes,\n                \"permiso\": self.privilegio == \"Administrador\"\n            },\n            {\n                \"texto\": \"Configuración\",\n                \"icono\": \"⚙\uFE0F\",\n                \"comando\": self.abrir_configuracion,\n                \"permiso\": self.privilegio == \"Administrador\"\n            }\n        ]\n\n        # Crear botones del menú\n        self.botones_menu = {}\n        for item in menu_items:\n            if item[\"permiso\"]:\n                btn = self._crear_boton_menu(\n                    item[\"texto\"],\n                    item[\"icono\"],\n                    item[\"comando\"]\n                )\n                self.botones_menu[item[\"texto\"]] = btn\n\n    def _crear_boton_menu(self, texto, icono, comando):\n        \"\"\"Crea un botón de menú estilizado\"\"\"\n        btn = ctk.CTkButton(\n            self.sidebar,\n            text=f\"  {icono}   {texto}\",\n            font=(\"Segoe UI\", 13),\n            height=45,\n            corner_radius=10,\n            fg_color=\"transparent\",\n            text_color=(\"#ECF0F1\", \"#ECF0F1\"),\n            hover_color=self.COLORES['sidebar_hover'],\n            anchor=\"w\",\n            command=lambda: self._activar_boton(texto, comando)\n        )\n        btn.pack(fill=\"x\", padx=15, pady=3)\n        return btn\n\n    def _activar_boton(self, nombre_boton, comando):\n        \"\"\"Activa visualmente el botón seleccionado\"\"\"\n        # Desactivar botón anterior\n        if self.boton_activo and self.boton_activo in self.botones_menu:\n            self.botones_menu[self.boton_activo].configure(\n                fg_color=\"transparent\"\n            )\n\n        # Activar nuevo botón\n        if nombre_boton in self.botones_menu:\n            self.botones_menu[nombre_boton].configure(\n                fg_color=self.COLORES['sidebar_active']\n            )\n            self.boton_activo = nombre_boton\n\n        # Ejecutar comando\n        comando()\n\n    def _crear_area_contenido(self, parent):\n        \"\"\"Crea el área principal de contenido\"\"\"\n        self.content_frame = ctk.CTkFrame(\n            parent,\n            fg_color=self.COLORES['content_bg'],\n            corner_radius=0\n        )\n        self.content_frame.pack(side=\"right\", fill=\"both\", expand=True)\n\n        # Frame normal (no scrollable) para el contenido\n        self.area_contenido = ctk.CTkFrame(\n            self.content_frame,\n            fg_color=\"transparent\"\n        )\n        self.area_contenido.pack(fill=\"both\", expand=True, padx=0, pady=0)\n\n    def limpiar_area_contenido(self):\n        \"\"\"Limpia el área de contenido\"\"\"\n        for widget in self.area_contenido.winfo_children():\n            widget.destroy()\n\n    def mostrar_inicio(self):\n        \"\"\"Muestra la pantalla de inicio con estadísticas\"\"\"\n        self.limpiar_area_contenido()\n\n        # Container principal con padding\n        container = ctk.CTkFrame(self.area_contenido, fg_color=\"transparent\")\n        container.pack(fill=\"both\", expand=True, padx=30, pady=30)\n\n        # Header\n        self._crear_header_inicio(container)\n\n        # Estadísticas\n        self._crear_cards_estadisticas(container)\n\n        # Información adicional\n        self._crear_info_adicional(container)\n\n    def _crear_header_inicio(self, parent):\n        \"\"\"Crea el header de la pantalla de inicio\"\"\"\n        header = ctk.CTkFrame(parent, fg_color=\"transparent\")\n        header.pack(fill=\"x\", pady=(0, 30))\n\n        # Título\n        ctk.CTkLabel(\n            header,\n            text=\"\uD83D\uDCCA Panel de Control\",\n            font=(\"Segoe UI\", 32, \"bold\"),\n            anchor=\"w\"\n        ).pack(anchor=\"w\")\n\n        # Subtítulo\n        ctk.CTkLabel(\n            header,\n            text=f\"Bienvenido de vuelta, {self.nombre_empleado}\",\n            font=(\"Segoe UI\", 14),\n            text_color=(\"#7F8C8D\", \"#95A5A6\"),\n            anchor=\"w\"\n        ).pack(anchor=\"w\", pady=(5, 0))\n\n    def _crear_cards_estadisticas(self, parent):\n        \"\"\"Crea las tarjetas de estadísticas\"\"\"\n        # Obtener estadísticas\n        stats = self.db.obtener_estadisticas()\n\n        # Grid de estadísticas\n        stats_grid = ctk.CTkFrame(parent, fg_color=\"transparent\")\n        stats_grid.pack(fill=\"x\", pady=(0, 30))\n\n        # Configurar columnas\n        for i in range(4):\n            stats_grid.columnconfigure(i, weight=1)\n\n        # Definir tarjetas\n        cards_data = [\n            {\n                \"titulo\": \"Disponibles\",\n                \"valor\": stats['disponibles'],\n                \"icono\": \"✅\",\n                \"color\": self.COLORES['success'],\n                \"subtitulo\": \"Habitaciones listas\"\n            },\n            {\n                \"titulo\": \"Ocupadas\",\n                \"valor\": stats['ocupadas'],\n                \"icono\": \"\uD83C\uDFE8\",\n                \"color\": self.COLORES['danger'],\n                \"subtitulo\": \"En uso actualmente\"\n            },\n            {\n                \"titulo\": \"En Limpieza\",\n                \"valor\": stats['limpieza'],\n                \"icono\": \"\uD83E\uDDF9\",\n                \"color\": self.COLORES['warning'],\n                \"subtitulo\": \"En mantenimiento\"\n            },\n            {\n                \"titulo\": \"Empleados\",\n                \"valor\": stats['empleados'],\n                \"icono\": \"\uD83D\uDC65\",\n                \"color\": self.COLORES['info'],\n                \"subtitulo\": \"Personal activo\"\n            }\n        ]\n\n        # Crear tarjetas\n        for i, card_data in enumerate(cards_data):\n            self._crear_tarjeta_stat(stats_grid, card_data, i)\n\n    def _crear_tarjeta_stat(self, parent, data, column):\n        \"\"\"Crea una tarjeta de estadística moderna\"\"\"\n        card = ctk.CTkFrame(\n            parent,\n            fg_color=self.COLORES['card_bg'],\n            corner_radius=15\n        )\n        card.grid(row=0, column=column, padx=10, pady=10, sticky=\"nsew\")\n\n        content = ctk.CTkFrame(card, fg_color=\"transparent\")\n        content.pack(fill=\"both\", expand=True, padx=25, pady=25)\n\n        header = ctk.CTkFrame(content, fg_color=\"transparent\")\n        header.pack(fill=\"x\", pady=(0, 15))\n\n        icon_frame = ctk.CTkFrame(\n            header,\n            width=50,\n            height=50,\n            fg_color=data['color'],\n            corner_radius=25\n        )\n        icon_frame.pack(side=\"left\")\n        icon_frame.pack_propagate(False)\n\n        ctk.CTkLabel(\n            icon_frame,\n            text=data['icono'],\n            font=(\"Segoe UI\", 24)\n        ).place(relx=0.5, rely=0.5, anchor=\"center\")\n\n        title_frame = ctk.CTkFrame(header, fg_color=\"transparent\")\n        title_frame.pack(side=\"left\", fill=\"x\", expand=True, padx=(15, 0))\n\n        ctk.CTkLabel(\n            title_frame,\n            text=data['titulo'],\n            font=(\"Segoe UI\", 12),\n            text_color=(\"#7F8C8D\", \"#95A5A6\"),\n            anchor=\"w\"\n        ).pack(anchor=\"w\")\n\n        ctk.CTkLabel(\n            content,\n            text=str(data['valor']),\n            font=(\"Segoe UI\", 42, \"bold\"),\n            anchor=\"w\"\n        ).pack(anchor=\"w\", pady=(10, 5))\n\n        ctk.CTkLabel(\n            content,\n            text=data['subtitulo'],\n            font=(\"Segoe UI\", 11),\n            text_color=(\"#95A5A6\", \"#7F8C8D\"),\n            anchor=\"w\"\n        ).pack(anchor=\"w\")\n\n    def _crear_info_adicional(self, parent):\n        \"\"\"Crea sección de información adicional\"\"\"\n        info_container = ctk.CTkFrame(parent, fg_color=\"transparent\")\n        info_container.pack(fill=\"both\", expand=True)\n\n        info_container.columnconfigure(0, weight=2)\n        info_container.columnconfigure(1, weight=1)\n\n        self._crear_actividad_reciente(info_container)\n        self._crear_accesos_rapidos(info_container)\n\n    def _crear_actividad_reciente(self, parent):\n        \"\"\"Crea la sección de actividad reciente\"\"\"\n        card = ctk.CTkFrame(\n            parent,\n            fg_color=self.COLORES['card_bg'],\n            corner_radius=15\n        )\n        card.grid(row=0, column=0, padx=(0, 10), sticky=\"nsew\")\n\n        header = ctk.CTkFrame(card, fg_color=\"transparent\")\n        header.pack(fill=\"x\", padx=25, pady=(25, 15))\n\n        ctk.CTkLabel(\n            header,\n            text=\"\uD83D\uDCCB Actividad Reciente\",\n            font=(\"Segoe UI\", 18, \"bold\"),\n            anchor=\"w\"\n        ).pack(anchor=\"w\")\n\n        activities = [\n            \"Nueva reserva registrada - Hab. 101\",\n            \"Check-out completado - Hab. 205\",\n            \"Habitación 302 lista para ocupar\",\n            \"Nueva reserva para fin de semana\"\n        ]\n\n        for activity in activities:\n            item = ctk.CTkFrame(card, fg_color=\"transparent\")\n            item.pack(fill=\"x\", padx=25, pady=8)\n\n            ctk.CTkLabel(\n                item,\n                text=\"•\",\n                font=(\"Segoe UI\", 16),\n                text_color=self.COLORES['primary']\n            ).pack(side=\"left\", padx=(0, 10))\n\n            ctk.CTkLabel(\n                item,\n                text=activity,\n                font=(\"Segoe UI\", 11),\n                anchor=\"w\"\n            ).pack(side=\"left\", fill=\"x\", expand=True)\n\n        ctk.CTkFrame(card, fg_color=\"transparent\", height=15).pack()\n\n    def _crear_accesos_rapidos(self, parent):\n        \"\"\"Crea la sección de accesos rápidos\"\"\"\n        card = ctk.CTkFrame(\n            parent,\n            fg_color=self.COLORES['card_bg'],\n            corner_radius=15\n        )\n        card.grid(row=0, column=1, padx=(10, 0), sticky=\"nsew\")\n\n        header = ctk.CTkFrame(card, fg_color=\"transparent\")\n        header.pack(fill=\"x\", padx=25, pady=(25, 15))\n\n        ctk.CTkLabel(\n            header,\n            text=\"⚡ Accesos Rápidos\",\n            font=(\"Segoe UI\", 18, \"bold\"),\n            anchor=\"w\"\n        ).pack(anchor=\"w\")\n\n        accesos = [\n            (\"Nueva Reserva\", \"\uD83D\uDCC5\", self.abrir_reservas),\n            (\"Ver Habitaciones\", \"\uD83D\uDECF\uFE0F\", self.abrir_habitaciones),\n            (\"Registrar Huésped\", \"\uD83D\uDC64\", self.abrir_huesped),\n        ]\n\n        for texto, icono, comando in accesos:\n            btn = ctk.CTkButton(\n                card,\n                text=f\"{icono}  {texto}\",\n                font=(\"Segoe UI\", 12),\n                height=45,\n                corner_radius=10,\n                fg_color=\"transparent\",\n                border_width=2,\n                border_color=(\"#BDC3C7\", \"#4A4A4A\"),\n                hover_color=self.COLORES['sidebar_hover'],\n                command=comando\n            )\n            btn.pack(fill=\"x\", padx=25, pady=8)\n\n        ctk.CTkFrame(card, fg_color=\"transparent\", height=15).pack()\n\n    def abrir_habitaciones(self):\n        self.limpiar_area_contenido()\n        HabitacionesWindow(self.area_contenido, self.privilegio)\n\n    def abrir_empleados(self):\n        if self.privilegio != \"Administrador\":\n            self.mostrar_acceso_denegado()\n            return\n        self.limpiar_area_contenido()\n        EmpleadosWindow(self.area_contenido)\n\n    def abrir_reservas(self):\n        self.limpiar_area_contenido()\n        ReservasWindow(self.area_contenido, self.privilegio)\n\n    def abrir_huesped(self):\n        self.limpiar_area_contenido()\n        HuespedesWindow(self.area_contenido)\n\n    def abrir_reportes(self):\n        if self.privilegio != \"Administrador\":\n            self.mostrar_acceso_denegado()\n            return\n        self.limpiar_area_contenido()\n        self.mostrar_en_desarrollo(\"Reportes\", \"\uD83D\uDCCA\")\n\n    def abrir_configuracion(self):\n        if self.privilegio != \"Administrador\":\n            self.mostrar_acceso_denegado()\n            return\n        self.limpiar_area_contenido()\n        self.mostrar_en_desarrollo(\"Configuración\", \"⚙\uFE0F\")\n\n    def mostrar_en_desarrollo(self, modulo, icono):\n        \"\"\"Muestra pantalla de módulo en desarrollo\"\"\"\n        container = ctk.CTkFrame(self.area_contenido, fg_color=\"transparent\")\n        container.pack(fill=\"both\", expand=True)\n\n        content = ctk.CTkFrame(container, fg_color=\"transparent\")\n        content.place(relx=0.5, rely=0.5, anchor=\"center\")\n\n        ctk.CTkLabel(\n            content,\n            text=icono,\n            font=(\"Segoe UI\", 80)\n        ).pack(pady=(0, 20))\n\n        ctk.CTkLabel(\n            content,\n            text=f\"Módulo de {modulo}\",\n            font=(\"Segoe UI\", 28, \"bold\")\n        ).pack(pady=(0, 10))\n\n        ctk.CTkLabel(\n            content,\n            text=\"Esta funcionalidad estará disponible próximamente\",\n            font=(\"Segoe UI\", 14),\n            text_color=(\"#7F8C8D\", \"#95A5A6\")\n        ).pack()\n\n    def mostrar_acceso_denegado(self):\n        \"\"\"Muestra pantalla de acceso denegado\"\"\"\n        self.limpiar_area_contenido()\n\n        container = ctk.CTkFrame(self.area_contenido, fg_color=\"transparent\")\n        container.pack(fill=\"both\", expand=True)\n\n        content = ctk.CTkFrame(container, fg_color=\"transparent\")\n        content.place(relx=0.5, rely=0.5, anchor=\"center\")\n\n        ctk.CTkLabel(\n            content,\n            text=\"\uD83D\uDEAB\",\n            font=(\"Segoe UI\", 80)\n        ).pack(pady=(0, 20))\n\n        ctk.CTkLabel(\n            content,\n            text=\"ACCESO DENEGADO\",\n            font=(\"Segoe UI\", 28, \"bold\"),\n            text_color=self.COLORES['danger']\n        ).pack(pady=(0, 10))\n\n        ctk.CTkLabel(\n            content,\n            text=\"No tienes permisos para acceder a esta sección\",\n            font=(\"Segoe UI\", 14),\n            text_color=(\"#7F8C8D\", \"#95A5A6\")\n        ).pack(pady=(0, 5))\n\n        ctk.CTkLabel(\n            content,\n            text=\"Contacta al administrador del sistema\",\n            font=(\"Segoe UI\", 12, \"italic\"),\n            text_color=(\"#95A5A6\", \"#7F8C8D\")\n        ).pack()\n\n    def salir(self):\n        \"\"\"Cierra la sesión y vuelve al login\"\"\"\n        respuesta = messagebox.askyesno(\n            \"Confirmar\",\n            \"¿Desea cerrar sesión?\"\n        )\n\n        if respuesta:\n            # Cerrar la base de datos\n            if self.db:\n                self.db.cerrar()\n                self.db = None\n\n            # Cerrar la ventana del dashboard\n            self._on_closing()\n\n    def _on_closing(self):\n        \"\"\"Maneja el cierre de la ventana del dashboard\"\"\"\n        if self.db:\n            try:\n                self.db.cerrar()\n            except:\n                pass\n\n        # Si hay referencia al login, mostrarlo de nuevo\n        if self.login_window:\n            self.login_window._on_dashboard_close(self.root)\n        else:\n            self.root.destroy()\n\n    def __del__(self):\n        \"\"\"Destructor para cerrar conexión a BD\"\"\"\n        if hasattr(self, 'db') and self.db:\n            try:\n                self.db.cerrar()\n            except Exception:\n                pass
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/gui/dashboard_window.py b/gui/dashboard_window.py
+--- a/gui/dashboard_window.py	(revision 7223df3a842a1e41f78e94f96cb446e4516ff55c)
++++ b/gui/dashboard_window.py	(date 1767734930259)
+@@ -132,12 +132,8 @@
+         content = ctk.CTkFrame(perfil, fg_color="transparent")
+         content.pack(fill="x", padx=15, pady=15)
+ 
+-        # Avatar
+-        ctk.CTkLabel(
+-            content,
+-            text="👤",
+-            font=("Segoe UI", 32)
+-        ).pack()
++        # Avatar personalizado según puesto
++        self._crear_avatar_puesto(content)
+ 
+         # Nombre
+         ctk.CTkLabel(
+@@ -179,6 +175,115 @@
+             command=self.salir
+         ).pack(padx=20, pady=(0, 10))
+ 
++    def _crear_avatar_puesto(self, parent):
++        """Crea el avatar personalizado según el puesto del empleado"""
++        try:
++            from PIL import Image, ImageDraw
++            import os
++
++            # Mapeo de puestos a nombres de archivo
++            avatares_por_puesto = {
++                'Gerente': 'cinnamon_gerente.png',
++                'Recepcionista': 'cinnamon_recepcion.png',
++                'Limpieza': 'cinnamon_limpieza.png',
++            }
++
++            # Obtener ruta del proyecto
++            current_dir = os.path.dirname(os.path.abspath(__file__))
++            project_root = os.path.dirname(current_dir)
++
++            # Determinar qué imagen usar según el puesto
++            nombre_archivo = avatares_por_puesto.get(self.puesto, 'default_avatar.png')
++            imagen_path = os.path.join(project_root, "assets", "images", nombre_archivo)
++
++            # Si no existe la imagen específica, intentar con default
++            if not os.path.exists(imagen_path):
++                imagen_path = os.path.join(project_root, "assets", "images", "default_avatar.png")
++
++            # Cargar y procesar imagen
++            if os.path.exists(imagen_path):
++                imagen_pil = Image.open(imagen_path)
++
++                # Redimensionar
++                tamaño = 80
++                imagen_pil.thumbnail((tamaño, tamaño), Image.Resampling.LANCZOS)
++
++                # Hacer circular
++                imagen_pil = self._hacer_avatar_circular(imagen_pil, tamaño)
++
++                # Convertir a CTkImage
++                imagen_ctk = ctk.CTkImage(
++                    light_image=imagen_pil,
++                    dark_image=imagen_pil,
++                    size=(tamaño, tamaño)
++                )
++
++                # Mostrar imagen
++                label_avatar = ctk.CTkLabel(
++                    parent,
++                    image=imagen_ctk,
++                    text=""
++                )
++                label_avatar.pack()
++            else:
++                # Fallback: emoji según puesto
++                self._crear_avatar_emoji(parent)
++
++        except Exception as e:
++            print(f"Error al cargar avatar: {e}")
++            # Fallback: emoji según puesto
++            self._crear_avatar_emoji(parent)
++
++    def _crear_avatar_emoji(self, parent):
++        """Crea un avatar con emoji según el puesto (fallback)"""
++        emojis_por_puesto = {
++            'Administrador': '👨‍💼',
++            'Gerente': '👔',
++            'Recepcionista': '🧑‍💻',
++            'Ama de Llaves': '🧹',
++            'Contador': '📊',
++            'Seguridad': '🛡️',
++        }
++
++        emoji = emojis_por_puesto.get(self.puesto, '👤')
++
++        ctk.CTkLabel(
++            parent,
++            text=emoji,
++            font=("Segoe UI", 32)
++        ).pack()
++
++    def _hacer_avatar_circular(self, imagen, tamaño):
++        """Convierte el avatar en circular"""
++        from PIL import Image, ImageDraw
++
++        # Convertir a RGBA
++        if imagen.mode != 'RGBA':
++            imagen = imagen.convert('RGBA')
++
++        # Hacer cuadrada
++        ancho, alto = imagen.size
++        if ancho != alto:
++            lado = min(ancho, alto)
++            left = (ancho - lado) // 2
++            top = (alto - lado) // 2
++            imagen = imagen.crop((left, top, left + lado, top + lado))
++
++        # Redimensionar al tamaño exacto
++        imagen = imagen.resize((tamaño, tamaño), Image.Resampling.LANCZOS)
++
++        # Crear máscara circular
++        mascara = Image.new('L', (tamaño, tamaño), 0)
++        draw = ImageDraw.Draw(mascara)
++        draw.ellipse((0, 0, tamaño, tamaño), fill=255)
++
++        # Aplicar máscara
++        output = Image.new('RGBA', (tamaño, tamaño), (0, 0, 0, 0))
++        output.paste(imagen, (0, 0))
++        output.putalpha(mascara)
++
++        return output
++
+     def _crear_menu_navegacion(self):
+         """Crea el menú de navegación"""
+         # Definir elementos del menú
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"ChangeListManager\">\n    <list default=\"true\" id=\"d36de272-2143-44ff-a6d6-ab9a906163bc\" name=\"Changes\" comment=\"\">\n      <change beforePath=\"$PROJECT_DIR$/.idea/workspace.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/workspace.xml\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/database/db_manager.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/database/db_manager.py\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/database/hotel.db\" beforeDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/gui/dashboard_window.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/gui/dashboard_window.py\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/gui/login_window.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/gui/login_window.py\" afterDir=\"false\" />\n      <change beforePath=\"$PROJECT_DIR$/gui/reservas_window.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/gui/reservas_window.py\" afterDir=\"false\" />\n    </list>\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\n  </component>\n  <component name=\"FileTemplateManagerImpl\">\n    <option name=\"RECENT_TEMPLATES\">\n      <list>\n        <option value=\"Python Script\" />\n      </list>\n    </option>\n  </component>\n  <component name=\"Git.Settings\">\n    <option name=\"PREVIOUS_COMMIT_AUTHORS\">\n      <list>\n        <option value=\"IbarrioNix &lt;marioibarra1003@gmail.com&gt;\" />\n      </list>\n    </option>\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\n    <option name=\"UPDATE_TYPE\" value=\"REBASE\" />\n  </component>\n  <component name=\"GitHubPullRequestSearchHistory\">{\n  &quot;lastFilter&quot;: {\n    &quot;state&quot;: &quot;OPEN&quot;,\n    &quot;assignee&quot;: &quot;IbarrioNix&quot;\n  }\n}</component>\n  <component name=\"GithubPullRequestsUISettings\">{\n  &quot;selectedUrlAndAccountId&quot;: {\n    &quot;url&quot;: &quot;https://github.com/IbarrioNix/Hotel-Amigues-Empleados.git&quot;,\n    &quot;accountId&quot;: &quot;c7e3f8d8-6353-4321-9383-84cf7a441bf6&quot;\n  }\n}</component>\n  <component name=\"ProjectColorInfo\">{\n  &quot;associatedIndex&quot;: 8\n}</component>\n  <component name=\"ProjectId\" id=\"37ggXMhaYbtZLJfeRQxel9VCqdg\" />\n  <component name=\"ProjectViewState\">\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\n    <option name=\"showLibraryContents\" value=\"true\" />\n  </component>\n  <component name=\"PropertiesComponent\">{\n  &quot;keyToString&quot;: {\n    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,\n    &quot;Python.dashboard_window.executor&quot;: &quot;Run&quot;,\n    &quot;Python.habitaciones_window.executor&quot;: &quot;Debug&quot;,\n    &quot;Python.login_window.executor&quot;: &quot;Run&quot;,\n    &quot;Python.main.executor&quot;: &quot;Run&quot;,\n    &quot;Python.test_connection.executor&quot;: &quot;Run&quot;,\n    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,\n    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,\n    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,\n    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,\n    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,\n    &quot;git-widget-placeholder&quot;: &quot;master&quot;,\n    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,\n    &quot;settings.editor.selected.configurable&quot;: &quot;proofread&quot;,\n    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;\n  }\n}</component>\n  <component name=\"RecentsManager\">\n    <key name=\"MoveFile.RECENT_KEYS\">\n      <recent name=\"$PROJECT_DIR$/database\" />\n    </key>\n  </component>\n  <component name=\"RunManager\" selected=\"Python.main\">\n    <configuration name=\"main\" type=\"PythonConfigurationType\" factoryName=\"Python\" temporary=\"true\" nameIsGenerated=\"true\">\n      <module name=\"Hotel-Amigues-Empleados\" />\n      <option name=\"ENV_FILES\" value=\"\" />\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\n      <option name=\"PARENT_ENVS\" value=\"true\" />\n      <envs>\n        <env name=\"PYTHONUNBUFFERED\" value=\"1\" />\n      </envs>\n      <option name=\"SDK_HOME\" value=\"\" />\n      <option name=\"WORKING_DIRECTORY\" value=\"$PROJECT_DIR$\" />\n      <option name=\"IS_MODULE_SDK\" value=\"true\" />\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\n      <EXTENSION ID=\"PythonCoverageRunConfigurationExtension\" runner=\"coverage.py\" />\n      <option name=\"RUN_TOOL\" value=\"\" />\n      <option name=\"SCRIPT_NAME\" value=\"$PROJECT_DIR$/main.py\" />\n      <option name=\"PARAMETERS\" value=\"\" />\n      <option name=\"SHOW_COMMAND_LINE\" value=\"false\" />\n      <option name=\"EMULATE_TERMINAL\" value=\"false\" />\n      <option name=\"MODULE_MODE\" value=\"false\" />\n      <option name=\"REDIRECT_INPUT\" value=\"false\" />\n      <option name=\"INPUT_FILE\" value=\"\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration name=\"test_connection\" type=\"PythonConfigurationType\" factoryName=\"Python\" temporary=\"true\" nameIsGenerated=\"true\">\n      <module name=\"Hotel-Amigues-Empleados\" />\n      <option name=\"ENV_FILES\" value=\"\" />\n      <option name=\"INTERPRETER_OPTIONS\" value=\"\" />\n      <option name=\"PARENT_ENVS\" value=\"true\" />\n      <envs>\n        <env name=\"PYTHONUNBUFFERED\" value=\"1\" />\n      </envs>\n      <option name=\"SDK_HOME\" value=\"\" />\n      <option name=\"WORKING_DIRECTORY\" value=\"$PROJECT_DIR$/gui\" />\n      <option name=\"IS_MODULE_SDK\" value=\"true\" />\n      <option name=\"ADD_CONTENT_ROOTS\" value=\"true\" />\n      <option name=\"ADD_SOURCE_ROOTS\" value=\"true\" />\n      <EXTENSION ID=\"PythonCoverageRunConfigurationExtension\" runner=\"coverage.py\" />\n      <option name=\"RUN_TOOL\" value=\"\" />\n      <option name=\"SCRIPT_NAME\" value=\"$PROJECT_DIR$/database/test_connection.py\" />\n      <option name=\"PARAMETERS\" value=\"\" />\n      <option name=\"SHOW_COMMAND_LINE\" value=\"false\" />\n      <option name=\"EMULATE_TERMINAL\" value=\"false\" />\n      <option name=\"MODULE_MODE\" value=\"false\" />\n      <option name=\"REDIRECT_INPUT\" value=\"false\" />\n      <option name=\"INPUT_FILE\" value=\"\" />\n      <method v=\"2\" />\n    </configuration>\n    <recent_temporary>\n      <list>\n        <item itemvalue=\"Python.main\" />\n        <item itemvalue=\"Python.test_connection\" />\n      </list>\n    </recent_temporary>\n  </component>\n  <component name=\"SharedIndexes\">\n    <attachedChunks>\n      <set>\n        <option value=\"bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PY-253.29346.142\" />\n        <option value=\"bundled-python-sdk-f2b7a9f6281b-6e1f45a539f7-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.29346.142\" />\n      </set>\n    </attachedChunks>\n  </component>\n  <component name=\"TaskManager\">\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\n      <changelist id=\"d36de272-2143-44ff-a6d6-ab9a906163bc\" name=\"Changes\" comment=\"\" />\n      <created>1767330166426</created>\n      <option name=\"number\" value=\"Default\" />\n      <option name=\"presentableId\" value=\"Default\" />\n      <updated>1767330166426</updated>\n      <workItem from=\"1767330167438\" duration=\"12598000\" />\n      <workItem from=\"1767416479572\" duration=\"5796000\" />\n      <workItem from=\"1767424014776\" duration=\"5073000\" />\n      <workItem from=\"1767671459989\" duration=\"4361000\" />\n      <workItem from=\"1767722368829\" duration=\"2881000\" />\n      <workItem from=\"1767725897635\" duration=\"508000\" />\n    </task>\n    <task id=\"LOCAL-00001\" summary=\"Commit\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767330646622</created>\n      <option name=\"number\" value=\"00001\" />\n      <option name=\"presentableId\" value=\"LOCAL-00001\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767330646622</updated>\n    </task>\n    <task id=\"LOCAL-00002\" summary=\"Login y dashboard basico\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767334652919</created>\n      <option name=\"number\" value=\"00002\" />\n      <option name=\"presentableId\" value=\"LOCAL-00002\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767334652919</updated>\n    </task>\n    <task id=\"LOCAL-00003\" summary=\"Login y dashboard basico\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767334667992</created>\n      <option name=\"number\" value=\"00003\" />\n      <option name=\"presentableId\" value=\"LOCAL-00003\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767334667992</updated>\n    </task>\n    <task id=\"LOCAL-00004\" summary=\"Login y dashboard basico\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767335268508</created>\n      <option name=\"number\" value=\"00004\" />\n      <option name=\"presentableId\" value=\"LOCAL-00004\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767335268508</updated>\n    </task>\n    <task id=\"LOCAL-00005\" summary=\"Creacion de base de datos y implementacion en login y dashboard\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767339563367</created>\n      <option name=\"number\" value=\"00005\" />\n      <option name=\"presentableId\" value=\"LOCAL-00005\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767339563367</updated>\n    </task>\n    <task id=\"LOCAL-00006\" summary=\"Creacion de ventana de habitaciones y implementacion de la conexion de la db para crear, editar, eliminar una habitacion\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767341218952</created>\n      <option name=\"number\" value=\"00006\" />\n      <option name=\"presentableId\" value=\"LOCAL-00006\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767341218952</updated>\n    </task>\n    <task id=\"LOCAL-00007\" summary=\"Implementacion de ventana empleados y su respectiva conexion con la db\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767342745104</created>\n      <option name=\"number\" value=\"00007\" />\n      <option name=\"presentableId\" value=\"LOCAL-00007\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767342745104</updated>\n    </task>\n    <task id=\"LOCAL-00008\" summary=\"Modificacion de la mayoria de ventanas para la implementacion de customtkinter\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767429079525</created>\n      <option name=\"number\" value=\"00008\" />\n      <option name=\"presentableId\" value=\"LOCAL-00008\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767429079525</updated>\n    </task>\n    <task id=\"LOCAL-00009\" summary=\"Muchos cambios visuales y modificacion de la base de datos\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767673789974</created>\n      <option name=\"number\" value=\"00009\" />\n      <option name=\"presentableId\" value=\"LOCAL-00009\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767673789974</updated>\n    </task>\n    <task id=\"LOCAL-00010\" summary=\"Changelog:&#10;Ahora se puede cerrar sesion\">\n      <option name=\"closed\" value=\"true\" />\n      <created>1767675188922</created>\n      <option name=\"number\" value=\"00010\" />\n      <option name=\"presentableId\" value=\"LOCAL-00010\" />\n      <option name=\"project\" value=\"LOCAL\" />\n      <updated>1767675188922</updated>\n    </task>\n    <option name=\"localTasksCounter\" value=\"11\" />\n    <servers />\n  </component>\n  <component name=\"TypeScriptGeneratedFilesManager\">\n    <option name=\"version\" value=\"3\" />\n  </component>\n  <component name=\"VcsManagerConfiguration\">\n    <MESSAGE value=\"Commit\" />\n    <MESSAGE value=\"Login y dashboard basico\" />\n    <MESSAGE value=\"Creacion de base de datos y implementacion en login y dashboard\" />\n    <MESSAGE value=\"Creacion de ventana de habitaciones y implementacion de la conexion de la db para crear, editar, eliminar una habitacion\" />\n    <MESSAGE value=\"Implementacion de ventana empleados y su respectiva conexion con la db\" />\n    <MESSAGE value=\"Modificacion de la mayoria de ventanas para la implementacion de customtkinter\" />\n    <MESSAGE value=\"Muchos cambios visuales y modificacion de la base de datos\" />\n    <MESSAGE value=\"Changelog:&#10;Ahora se puede cerrar sesion\" />\n    <option name=\"LAST_COMMIT_MESSAGE\" value=\"Changelog:&#10;Ahora se puede cerrar sesion\" />\n  </component>\n  <component name=\"com.intellij.coverage.CoverageDataManagerImpl\">\n    <SUITE FILE_PATH=\"coverage/Hotel_Amigues_Empleados$habitaciones_window.coverage\" NAME=\"habitaciones_window Coverage Results\" MODIFIED=\"1767341000122\" SOURCE_PROVIDER=\"com.intellij.coverage.DefaultCoverageFileProvider\" RUNNER=\"coverage.py\" COVERAGE_BY_TEST_ENABLED=\"false\" COVERAGE_TRACING_ENABLED=\"false\" WORKING_DIRECTORY=\"$PROJECT_DIR$/gui\" />\n    <SUITE FILE_PATH=\"coverage/Hotel_Amigues_Empleados$main.coverage\" NAME=\"main Coverage Results\" MODIFIED=\"1767726207397\" SOURCE_PROVIDER=\"com.intellij.coverage.DefaultCoverageFileProvider\" RUNNER=\"coverage.py\" COVERAGE_BY_TEST_ENABLED=\"false\" COVERAGE_TRACING_ENABLED=\"false\" WORKING_DIRECTORY=\"$PROJECT_DIR$\" />\n    <SUITE FILE_PATH=\"coverage/Hotel_Amigues_Empleados$dashboard_window.coverage\" NAME=\"dashboard_window Coverage Results\" MODIFIED=\"1767333854389\" SOURCE_PROVIDER=\"com.intellij.coverage.DefaultCoverageFileProvider\" RUNNER=\"coverage.py\" COVERAGE_BY_TEST_ENABLED=\"false\" COVERAGE_TRACING_ENABLED=\"false\" WORKING_DIRECTORY=\"$PROJECT_DIR$/gui\" />\n    <SUITE FILE_PATH=\"coverage/Hotel_Amigues_Empleados$login_window.coverage\" NAME=\"login_window Coverage Results\" MODIFIED=\"1767332918256\" SOURCE_PROVIDER=\"com.intellij.coverage.DefaultCoverageFileProvider\" RUNNER=\"coverage.py\" COVERAGE_BY_TEST_ENABLED=\"false\" COVERAGE_TRACING_ENABLED=\"false\" WORKING_DIRECTORY=\"$PROJECT_DIR$/gui\" />\n    <SUITE FILE_PATH=\"coverage/Hotel_Amigues_Empleados$test_connection.coverage\" NAME=\"test_connection Coverage Results\" MODIFIED=\"1767724906995\" SOURCE_PROVIDER=\"com.intellij.coverage.DefaultCoverageFileProvider\" RUNNER=\"coverage.py\" COVERAGE_BY_TEST_ENABLED=\"false\" COVERAGE_TRACING_ENABLED=\"false\" WORKING_DIRECTORY=\"$PROJECT_DIR$/gui\" />\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision 7223df3a842a1e41f78e94f96cb446e4516ff55c)
++++ b/.idea/workspace.xml	(date 1767735332832)
+@@ -1,13 +1,14 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
+   <component name="ChangeListManager">
+-    <list default="true" id="d36de272-2143-44ff-a6d6-ab9a906163bc" name="Changes" comment="">
++    <list default="true" id="d36de272-2143-44ff-a6d6-ab9a906163bc" name="Changes" comment="Implementacion de imagenes y avatares">
++      <change afterPath="$PROJECT_DIR$/assets/images/cinnamon_gerente.png" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/assets/images/cinnamon_limpieza.png" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/assets/images/cinnamon_login.png" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/assets/images/cinnamon_recepcion.png" afterDir="false" />
+       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/database/db_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/database/db_manager.py" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/database/hotel.db" beforeDir="false" />
+       <change beforePath="$PROJECT_DIR$/gui/dashboard_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/dashboard_window.py" afterDir="false" />
+       <change beforePath="$PROJECT_DIR$/gui/login_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/login_window.py" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/gui/reservas_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/reservas_window.py" afterDir="false" />
+     </list>
+     <option name="SHOW_DIALOG" value="false" />
+     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+@@ -50,26 +51,30 @@
+     <option name="hideEmptyMiddlePackages" value="true" />
+     <option name="showLibraryContents" value="true" />
+   </component>
+-  <component name="PropertiesComponent">{
+-  &quot;keyToString&quot;: {
+-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+-    &quot;Python.dashboard_window.executor&quot;: &quot;Run&quot;,
+-    &quot;Python.habitaciones_window.executor&quot;: &quot;Debug&quot;,
+-    &quot;Python.login_window.executor&quot;: &quot;Run&quot;,
+-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+-    &quot;Python.test_connection.executor&quot;: &quot;Run&quot;,
+-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
+-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+-    &quot;settings.editor.selected.configurable&quot;: &quot;proofread&quot;,
+-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
++  <component name="PropertiesComponent"><![CDATA[{
++  "keyToString": {
++    "ModuleVcsDetector.initialDetectionPerformed": "true",
++    "Python.dashboard_window.executor": "Run",
++    "Python.habitaciones_window.executor": "Debug",
++    "Python.login_window.executor": "Run",
++    "Python.main.executor": "Run",
++    "Python.test_connection.executor": "Run",
++    "RunOnceActivity.ShowReadmeOnStart": "true",
++    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
++    "RunOnceActivity.git.unshallow": "true",
++    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
++    "ai.playground.ignore.import.keys.banner.in.settings": "true",
++    "git-widget-placeholder": "master",
++    "last_opened_file_path": "/home/ibarrio/PycharmProjects/Hotel-Amigues-Empleados/assets/images",
++    "nodejs_package_manager_path": "npm",
++    "settings.editor.selected.configurable": "proofread",
++    "vue.rearranger.settings.migration": "true"
+   }
+-}</component>
++}]]></component>
+   <component name="RecentsManager">
++    <key name="CopyFile.RECENT_KEYS">
++      <recent name="$PROJECT_DIR$/assets/images" />
++    </key>
+     <key name="MoveFile.RECENT_KEYS">
+       <recent name="$PROJECT_DIR$/database" />
+     </key>
+@@ -150,7 +155,10 @@
+       <workItem from="1767424014776" duration="5073000" />
+       <workItem from="1767671459989" duration="4361000" />
+       <workItem from="1767722368829" duration="2881000" />
+-      <workItem from="1767725897635" duration="508000" />
++      <workItem from="1767725897635" duration="1780000" />
++      <workItem from="1767733253955" duration="94000" />
++      <workItem from="1767733358919" duration="319000" />
++      <workItem from="1767734393399" duration="940000" />
+     </task>
+     <task id="LOCAL-00001" summary="Commit">
+       <option name="closed" value="true" />
+@@ -232,7 +240,23 @@
+       <option name="project" value="LOCAL" />
+       <updated>1767675188922</updated>
+     </task>
+-    <option name="localTasksCounter" value="11" />
++    <task id="LOCAL-00011" summary="Migracion de sqlite a PostgreSQl(supabase)">
++      <option name="closed" value="true" />
++      <created>1767726435220</created>
++      <option name="number" value="00011" />
++      <option name="presentableId" value="LOCAL-00011" />
++      <option name="project" value="LOCAL" />
++      <updated>1767726435220</updated>
++    </task>
++    <task id="LOCAL-00012" summary="Implementacion de imagenes y avatares">
++      <option name="closed" value="true" />
++      <created>1767735332500</created>
++      <option name="number" value="00012" />
++      <option name="presentableId" value="LOCAL-00012" />
++      <option name="project" value="LOCAL" />
++      <updated>1767735332500</updated>
++    </task>
++    <option name="localTasksCounter" value="13" />
+     <servers />
+   </component>
+   <component name="TypeScriptGeneratedFilesManager">
+@@ -247,13 +271,15 @@
+     <MESSAGE value="Modificacion de la mayoria de ventanas para la implementacion de customtkinter" />
+     <MESSAGE value="Muchos cambios visuales y modificacion de la base de datos" />
+     <MESSAGE value="Changelog:&#10;Ahora se puede cerrar sesion" />
+-    <option name="LAST_COMMIT_MESSAGE" value="Changelog:&#10;Ahora se puede cerrar sesion" />
++    <MESSAGE value="Migracion de sqlite a PostgreSQl(supabase)" />
++    <MESSAGE value="Implementacion de imagenes y avatares" />
++    <option name="LAST_COMMIT_MESSAGE" value="Implementacion de imagenes y avatares" />
+   </component>
+   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+     <SUITE FILE_PATH="coverage/Hotel_Amigues_Empleados$habitaciones_window.coverage" NAME="habitaciones_window Coverage Results" MODIFIED="1767341000122" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gui" />
+-    <SUITE FILE_PATH="coverage/Hotel_Amigues_Empleados$main.coverage" NAME="main Coverage Results" MODIFIED="1767726207397" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
++    <SUITE FILE_PATH="coverage/Hotel_Amigues_Empleados$main.coverage" NAME="main Coverage Results" MODIFIED="1767734978997" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+     <SUITE FILE_PATH="coverage/Hotel_Amigues_Empleados$dashboard_window.coverage" NAME="dashboard_window Coverage Results" MODIFIED="1767333854389" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gui" />
+     <SUITE FILE_PATH="coverage/Hotel_Amigues_Empleados$login_window.coverage" NAME="login_window Coverage Results" MODIFIED="1767332918256" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gui" />
+-    <SUITE FILE_PATH="coverage/Hotel_Amigues_Empleados$test_connection.coverage" NAME="test_connection Coverage Results" MODIFIED="1767724906995" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gui" />
++    <SUITE FILE_PATH="coverage/Hotel_Amigues_Empleados$test_connection.coverage" NAME="test_connection Coverage Results" MODIFIED="1767732069472" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gui" />
+   </component>
+ </project>
+\ No newline at end of file
