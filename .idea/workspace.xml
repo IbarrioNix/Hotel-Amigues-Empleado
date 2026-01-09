@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d36de272-2143-44ff-a6d6-ab9a906163bc" name="Changes" comment="" />
+    <list default="true" id="d36de272-2143-44ff-a6d6-ab9a906163bc" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -29,12 +31,12 @@
     &quot;assignee&quot;: &quot;IbarrioNix&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/IbarrioNix/Hotel-Amigues-Empleados.git&quot;,
-    &quot;accountId&quot;: &quot;c7e3f8d8-6353-4321-9383-84cf7a441bf6&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/IbarrioNix/Hotel-Amigues-Empleado.git",
+    "accountId": "c7e3f8d8-6353-4321-9383-84cf7a441bf6"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 8
 }</component>
@@ -57,7 +59,7 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "ai.playground.ignore.import.keys.banner.in.settings": "true",
     "git-widget-placeholder": "master",
-    "last_opened_file_path": "/home/ibarrio/PycharmProjects/Hotel-Amigues-Empleados",
+    "last_opened_file_path": "/home/ibarrio/PycharmProjects/Hotel-Amigues-Empleados/.venv",
     "nodejs_package_manager_path": "npm",
     "settings.editor.selected.configurable": "reference.settingsdialog.IDE.editor.colors.VCS",
     "vue.rearranger.settings.migration": "true"
@@ -65,6 +67,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/.venv" />
       <recent name="$PROJECT_DIR$/assets/images" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
@@ -152,7 +155,7 @@
       <workItem from="1767733358919" duration="319000" />
       <workItem from="1767734393399" duration="2393000" />
       <workItem from="1767932375421" duration="272000" />
-      <workItem from="1767932663416" duration="133000" />
+      <workItem from="1767932663416" duration="642000" />
     </task>
     <task id="LOCAL-00001" summary="Commit">
       <option name="closed" value="true" />
