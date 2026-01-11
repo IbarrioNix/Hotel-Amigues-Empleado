@@ -1,0 +1,6 @@
+customtkinter==5.2.2
+darkdetect==0.8.0
+dotenv==0.9.9
+packaging==25.0
+psycopg2-binary==2.9.11
+python-dotenv==1.2.1
