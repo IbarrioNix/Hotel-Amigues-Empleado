@@ -23,9 +23,10 @@ class LoginWindow:
         self.password_visible = False
 
         # Inicializar
-        self._inicializar_db()
-        self._centrar_ventana()
+        # self._inicializar_db()    wrong
         self._crear_widgets()
+        self.root.update_idletasks()
+        self._centrar_ventana()
 
         # Focus inicial
         self.entry_usuario.focus()
@@ -33,16 +34,13 @@ class LoginWindow:
         # Protocolo de cierre
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
 
-    def _inicializar_db(self):
-        """Inicializa la conexión a la base de datos con manejo de errores"""
+    def _inicializar_db(self) -> bool:
         try:
             self.db = DatabaseManager()
-        except Exception as e:
-            messagebox.showerror(
-                "Error de Conexión",
-                f"No se pudo conectar a la base de datos:\n{str(e)}"
-            )
-            self.root.quit()
+            return True
+        except Exception:
+            self.db = None
+            return False
 
     def _centrar_ventana(self):
         """Centra la ventana en la pantalla"""
@@ -420,14 +418,20 @@ class LoginWindow:
         )
 
     def validar_login(self):
-        """Valida las credenciales del usuario"""
         es_valido, usuario, password = self._validar_campos()
         if not es_valido:
             return
 
-        if self.intentos_fallidos >= self.max_intentos:
-            self._bloquear_login()
-            return
+        # 🔹 HERE
+        if not self.db:
+            conectado = self._inicializar_db()
+            if not conectado:
+                messagebox.showwarning(
+                    "Sin conexión",
+                    "No se pudo conectar al servidor.\n"
+                    "Verifique su conexión o contacte al administrador."
+                )
+                return
 
         try:
             empleado = self.db.validar_login(usuario, password)
@@ -437,8 +441,12 @@ class LoginWindow:
             else:
                 self._login_fallido()
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Error al validar credenciales:\n{str(e)}")
+        except Exception:
+            messagebox.showerror(
+                "Error",
+                "Ocurrió un problema al validar las credenciales.\n"
+                "Intente nuevamente."
+            )
 
     def _login_exitoso(self, empleado):
         """Maneja un login exitoso"""
