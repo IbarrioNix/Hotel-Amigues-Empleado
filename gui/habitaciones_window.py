@@ -2,14 +2,19 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from database.db_manager import DatabaseManager
+from core.session import obtener_sesion
 from typing import Optional, List, Tuple
 
 
 class HabitacionesWindow:
-    def __init__(self, parent, privilegio="Empleado"):
+    def __init__(self, parent):
         self.parent = parent
-        self.privilegio = privilegio
-        self.db = DatabaseManager()
+
+        # 🔹 Obtener sesión global
+        self.session = obtener_sesion()
+
+        # 🔹 Obtener la base de datos desde la sesión
+        self.db = self.session.db
 
         # Variables
         self.habitacion_seleccionada = None
@@ -364,7 +369,7 @@ class HabitacionesWindow:
         btn_editar.pack(side="left", expand=True, padx=(0, 5))
 
         # Botón eliminar (solo admin)
-        if self.privilegio == "Administrador":
+        if self.session.tiene_privilegio_admin():
             btn_eliminar = ctk.CTkButton(
                 btn_frame,
                 text="🗑️",

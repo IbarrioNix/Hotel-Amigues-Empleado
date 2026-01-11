@@ -4,15 +4,19 @@ from tkinter import messagebox
 from tkcalendar import DateEntry
 from datetime import datetime, timedelta
 from database.db_manager import DatabaseManager
+from core.session import obtener_sesion
 from typing import Optional, List, Tuple
 
 
 class ReservasWindow:
-    def __init__(self, parent, privilegio="Empleado"):
+    def __init__(self, parent):
         self.parent = parent
-        self.privilegio = privilegio
-        self.db = DatabaseManager()
 
+        # 🔹 Obtener sesión global
+        self.session = obtener_sesion()
+
+        # 🔹 Obtener la base de datos desde la sesión
+        self.db = self.session.db
         # Variables
         self.reserva_seleccionada = None
         self.filtro_estado = "Todas"
@@ -374,7 +378,7 @@ class ReservasWindow:
             btn_checkout.pack(pady=2)
 
             # Botón Cancelar (solo admin)
-            if self.privilegio == "Administrador":
+            if self.session.tiene_privilegio_admin():
                 btn_cancelar = ctk.CTkButton(
                     botones_frame,
                     text="❌ Cancelar",

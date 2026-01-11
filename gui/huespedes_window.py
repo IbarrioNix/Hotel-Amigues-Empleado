@@ -2,13 +2,19 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from database.db_manager import DatabaseManager
+from core.session import obtener_sesion
 from typing import Optional, List, Tuple
 
 
 class HuespedesWindow:
     def __init__(self, parent):
         self.parent = parent
-        self.db = DatabaseManager()
+
+        # 🔹 Obtener sesión global
+        self.session = obtener_sesion()
+
+        # 🔹 Obtener la base de datos desde la sesión
+        self.db = self.session.db
 
         # Variables
         self.huesped_seleccionado = None

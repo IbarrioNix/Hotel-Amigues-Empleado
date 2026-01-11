@@ -2,18 +2,24 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from database.db_manager import DatabaseManager
+from core.session import obtener_sesion
 from typing import Optional, List, Tuple
 
 
 class EmpleadosWindow:
     def __init__(self, parent):
         self.parent = parent
-        self.db = DatabaseManager()
+
+        # 🔹 Obtener sesión global
+        self.session = obtener_sesion()
+
+        # 🔹 Obtener la base de datos desde la sesión
+        self.db = self.session.db
 
         # Variables
         self.empleado_seleccionado = None
 
-        # Colores consistentes
+        # Colores consistentes (DEBE IR ANTES de _crear_interfaz)
         self.COLORES = {
             'card_bg': ("#FFFFFF", "#3a3a3a"),
             'primary': "#3498DB",
@@ -25,8 +31,12 @@ class EmpleadosWindow:
             'empleado': "#3498DB",
         }
 
+        # Crear interfaz y cargar datos
         self._crear_interfaz()
         self.cargar_empleados()
+
+        # Debug: mostrar usuario activo
+        print(f"Usuario activo: {self.session.nombre}")
 
     def _crear_interfaz(self):
         """Crea la interfaz principal"""

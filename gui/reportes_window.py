@@ -4,12 +4,17 @@ from tkinter import messagebox, filedialog, ttk
 from datetime import datetime, timedelta
 from tkcalendar import DateEntry
 from database.db_manager import DatabaseManager
-
+from core.session import obtener_sesion
 
 class ReportesWindow:
     def __init__(self, parent):
         self.parent = parent
-        self.db = DatabaseManager()
+
+        # 🔹 Obtener sesión global
+        self.session = obtener_sesion()
+
+        # 🔹 Obtener la base de datos desde la sesión
+        self.db = self.session.db
 
         # Colores del tema
         self.COLORES = {

@@ -6,23 +6,27 @@ from gui.empleados_window import EmpleadosWindow
 from gui.reportes_window import ReportesWindow
 from gui.reservas_window import ReservasWindow
 from gui.huespedes_window import HuespedesWindow
-from database.db_manager import DatabaseManager
+from core.session import obtener_sesion
 
 
 class DashboardWindow:
-    def __init__(self, root, nombre_empleado, apellido_empleado, puesto, privilegio, login_window=None):
+    def __init__(self, root, login_window=None):
         self.root = root
-        self.nombre_empleado = nombre_empleado
-        self.apellido_empleado = apellido_empleado
-        self.puesto = puesto
-        self.privilegio = privilegio
         self.login_window = login_window
 
-        # Base de datos
-        self.db = DatabaseManager()
+        # 🔹 OBTENER SESIÓN GLOBAL (ya tiene DB y datos del usuario)
+        self.session = obtener_sesion()
+
+        # Verificar que hay sesión activa
+        if not self.session.sesion_activa:
+            messagebox.showerror("Error", "No hay sesión activa")
+            if login_window:
+                self.root.destroy()
+                login_window.root.deiconify()
+            return
 
         # Configuración de ventana
-        self.root.title("Sistema Hotel Amigues - Dashboard")
+        self.root.title(f"Sistema Hotel Amigues - Dashboard - {self.session.nombre_completo}")
         self.root.geometry("1400x800")
 
         # Variables
@@ -50,14 +54,10 @@ class DashboardWindow:
 
     def _crear_interfaz(self):
         """Crea la interfaz principal del dashboard"""
-        # Container principal
         main_container = ctk.CTkFrame(self.root, fg_color="transparent")
         main_container.pack(fill="both", expand=True)
 
-        # Sidebar
         self._crear_sidebar(main_container)
-
-        # Área de contenido
         self._crear_area_contenido(main_container)
 
     def _crear_sidebar(self, parent):
@@ -71,48 +71,33 @@ class DashboardWindow:
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
-        # Header del sidebar
         self._crear_sidebar_header()
-
-        # Perfil del usuario
         self._crear_perfil_usuario()
 
-        # Separador
         ctk.CTkFrame(
             self.sidebar,
             height=2,
             fg_color=self.COLORES['sidebar_active']
         ).pack(fill="x", padx=20, pady=20)
 
-        # Menú de navegación
         self._crear_menu_navegacion()
 
-        # Espaciador
         ctk.CTkFrame(
             self.sidebar,
             fg_color="transparent"
         ).pack(fill="both", expand=True)
 
     def _crear_sidebar_header(self):
-        """Crea el header del sidebar con logo y título"""
+        """Crea el header del sidebar"""
         header = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         header.pack(fill="x", padx=20, pady=(30, 20))
 
-        # Logo
-        #ctk.CTkLabel(
-        #    header,
-        #    text="🏨",
-        #    font=("Segoe UI", 40)
-        #).pack()
-
-        # Título
         ctk.CTkLabel(
             header,
             text="HOTEL AMIGUES",
             font=("Segoe UI", 18, "bold")
         ).pack(pady=(10, 0))
 
-        # Subtítulo
         ctk.CTkLabel(
             header,
             text="Sistema de Gestión",
@@ -129,33 +114,29 @@ class DashboardWindow:
         )
         perfil.pack(fill="x", padx=20, pady=(0, 10))
 
-        # Contenido del perfil
         content = ctk.CTkFrame(perfil, fg_color="transparent")
         content.pack(fill="x", padx=15, pady=15)
 
-        # Avatar personalizado según puesto
+        # 🔹 USAR DATOS DE LA SESIÓN
         self._crear_avatar_puesto(content)
 
-        # Nombre
         ctk.CTkLabel(
             content,
-            text=f"{self.nombre_empleado} {self.apellido_empleado}",
+            text=self.session.nombre_completo,
             font=("Segoe UI", 13, "bold")
         ).pack(pady=(8, 5))
 
-        # Puesto
         ctk.CTkLabel(
             content,
-            text=self.puesto,
+            text=self.session.puesto,
             font=("Segoe UI", 10),
             text_color=("#95A5A6", "#7F8C8D")
         ).pack(pady=(0, 8))
 
-        # Badge de privilegio
-        badge_color = self.COLORES['danger'] if self.privilegio == "Administrador" else self.COLORES['info']
+        badge_color = self.COLORES['danger'] if self.session.tiene_privilegio_admin() else self.COLORES['info']
         ctk.CTkLabel(
             content,
-            text=self.privilegio,
+            text=self.session.privilegio,
             font=("Segoe UI", 9, "bold"),
             fg_color=badge_color,
             corner_radius=6,
@@ -163,7 +144,6 @@ class DashboardWindow:
             pady=4
         ).pack(pady=(0, 8))
 
-        # Botón de cerrar sesión
         ctk.CTkButton(
             self.sidebar,
             text="  🚪   Cerrar Sesión",
@@ -177,66 +157,48 @@ class DashboardWindow:
         ).pack(padx=20, pady=(0, 10))
 
     def _crear_avatar_puesto(self, parent):
-        """Crea el avatar personalizado según el puesto del empleado"""
+        """Crea el avatar según el puesto"""
         try:
             from PIL import Image, ImageDraw
             import os
 
-            # Mapeo de puestos a nombres de archivo
             avatares_por_puesto = {
                 'Gerente': 'cinnamon_gerente.png',
                 'Recepcionista': 'cinnamon_recepcion.png',
                 'Limpieza': 'cinnamon_limpieza.png',
             }
 
-            # Obtener ruta del proyecto
             current_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.dirname(current_dir)
 
-            # Determinar qué imagen usar según el puesto
-            nombre_archivo = avatares_por_puesto.get(self.puesto, 'default_avatar.png')
+            nombre_archivo = avatares_por_puesto.get(self.session.puesto, 'default_avatar.png')
             imagen_path = os.path.join(project_root, "assets", "images", nombre_archivo)
 
-            # Si no existe la imagen específica, intentar con default
             if not os.path.exists(imagen_path):
                 imagen_path = os.path.join(project_root, "assets", "images", "default_avatar.png")
 
-            # Cargar y procesar imagen
             if os.path.exists(imagen_path):
                 imagen_pil = Image.open(imagen_path)
-
-                # Redimensionar
                 tamaño = 80
                 imagen_pil.thumbnail((tamaño, tamaño), Image.Resampling.LANCZOS)
-
-                # Hacer circular
                 imagen_pil = self._hacer_avatar_circular(imagen_pil, tamaño)
 
-                # Convertir a CTkImage
                 imagen_ctk = ctk.CTkImage(
                     light_image=imagen_pil,
                     dark_image=imagen_pil,
                     size=(tamaño, tamaño)
                 )
 
-                # Mostrar imagen
-                label_avatar = ctk.CTkLabel(
-                    parent,
-                    image=imagen_ctk,
-                    text=""
-                )
-                label_avatar.pack()
+                ctk.CTkLabel(parent, image=imagen_ctk, text="").pack()
             else:
-                # Fallback: emoji según puesto
                 self._crear_avatar_emoji(parent)
 
         except Exception as e:
             print(f"Error al cargar avatar: {e}")
-            # Fallback: emoji según puesto
             self._crear_avatar_emoji(parent)
 
     def _crear_avatar_emoji(self, parent):
-        """Crea un avatar con emoji según el puesto (fallback)"""
+        """Crea avatar con emoji según puesto"""
         emojis_por_puesto = {
             'Administrador': '👨‍💼',
             'Gerente': '👔',
@@ -246,23 +208,16 @@ class DashboardWindow:
             'Seguridad': '🛡️',
         }
 
-        emoji = emojis_por_puesto.get(self.puesto, '👤')
-
-        ctk.CTkLabel(
-            parent,
-            text=emoji,
-            font=("Segoe UI", 32)
-        ).pack()
+        emoji = emojis_por_puesto.get(self.session.puesto, '👤')
+        ctk.CTkLabel(parent, text=emoji, font=("Segoe UI", 32)).pack()
 
     def _hacer_avatar_circular(self, imagen, tamaño):
-        """Convierte el avatar en circular"""
+        """Convierte avatar en circular"""
         from PIL import Image, ImageDraw
 
-        # Convertir a RGBA
         if imagen.mode != 'RGBA':
             imagen = imagen.convert('RGBA')
 
-        # Hacer cuadrada
         ancho, alto = imagen.size
         if ancho != alto:
             lado = min(ancho, alto)
@@ -270,15 +225,12 @@ class DashboardWindow:
             top = (alto - lado) // 2
             imagen = imagen.crop((left, top, left + lado, top + lado))
 
-        # Redimensionar al tamaño exacto
         imagen = imagen.resize((tamaño, tamaño), Image.Resampling.LANCZOS)
 
-        # Crear máscara circular
         mascara = Image.new('L', (tamaño, tamaño), 0)
         draw = ImageDraw.Draw(mascara)
         draw.ellipse((0, 0, tamaño, tamaño), fill=255)
 
-        # Aplicar máscara
         output = Image.new('RGBA', (tamaño, tamaño), (0, 0, 0, 0))
         output.paste(imagen, (0, 0))
         output.putalpha(mascara)
@@ -287,7 +239,6 @@ class DashboardWindow:
 
     def _crear_menu_navegacion(self):
         """Crea el menú de navegación"""
-        # Definir elementos del menú
         menu_items = [
             {
                 "texto": "Inicio",
@@ -317,23 +268,22 @@ class DashboardWindow:
                 "texto": "Empleados",
                 "icono": "💼",
                 "comando": self.abrir_empleados,
-                "permiso": self.privilegio == "Administrador"
+                "permiso": self.session.tiene_privilegio_admin()
             },
             {
                 "texto": "Reportes",
                 "icono": "📊",
                 "comando": self.abrir_reportes,
-                "permiso": self.privilegio == "Administrador"
+                "permiso": self.session.tiene_privilegio_admin()
             },
             {
                 "texto": "Configuración",
                 "icono": "⚙️",
                 "comando": self.abrir_configuracion,
-                "permiso": self.privilegio == "Administrador"
+                "permiso": self.session.tiene_privilegio_admin()
             }
         ]
 
-        # Crear botones del menú
         self.botones_menu = {}
         for item in menu_items:
             if item["permiso"]:
@@ -345,7 +295,7 @@ class DashboardWindow:
                 self.botones_menu[item["texto"]] = btn
 
     def _crear_boton_menu(self, texto, icono, comando):
-        """Crea un botón de menú estilizado"""
+        """Crea un botón de menú"""
         btn = ctk.CTkButton(
             self.sidebar,
             text=f"  {icono}   {texto}",
@@ -363,20 +313,13 @@ class DashboardWindow:
 
     def _activar_boton(self, nombre_boton, comando):
         """Activa visualmente el botón seleccionado"""
-        # Desactivar botón anterior
         if self.boton_activo and self.boton_activo in self.botones_menu:
-            self.botones_menu[self.boton_activo].configure(
-                fg_color="transparent"
-            )
+            self.botones_menu[self.boton_activo].configure(fg_color="transparent")
 
-        # Activar nuevo botón
         if nombre_boton in self.botones_menu:
-            self.botones_menu[nombre_boton].configure(
-                fg_color=self.COLORES['sidebar_active']
-            )
+            self.botones_menu[nombre_boton].configure(fg_color=self.COLORES['sidebar_active'])
             self.boton_activo = nombre_boton
 
-        # Ejecutar comando
         comando()
 
     def _crear_area_contenido(self, parent):
@@ -388,7 +331,6 @@ class DashboardWindow:
         )
         self.content_frame.pack(side="right", fill="both", expand=True)
 
-        # Frame normal (no scrollable) para el contenido
         self.area_contenido = ctk.CTkFrame(
             self.content_frame,
             fg_color="transparent"
@@ -404,25 +346,18 @@ class DashboardWindow:
         """Muestra la pantalla de inicio con estadísticas"""
         self.limpiar_area_contenido()
 
-        # Container principal con padding
         container = ctk.CTkFrame(self.area_contenido, fg_color="transparent")
         container.pack(fill="both", expand=True, padx=30, pady=30)
 
-        # Header
         self._crear_header_inicio(container)
-
-        # Estadísticas
         self._crear_cards_estadisticas(container)
-
-        # Información adicional
         self._crear_info_adicional(container)
 
     def _crear_header_inicio(self, parent):
-        """Crea el header de la pantalla de inicio"""
+        """Crea el header de inicio"""
         header = ctk.CTkFrame(parent, fg_color="transparent")
         header.pack(fill="x", pady=(0, 30))
 
-        # Título
         ctk.CTkLabel(
             header,
             text="📊 Panel de Control",
@@ -430,10 +365,9 @@ class DashboardWindow:
             anchor="w"
         ).pack(anchor="w")
 
-        # Subtítulo
         ctk.CTkLabel(
             header,
-            text=f"Bienvenido de vuelta, {self.nombre_empleado}",
+            text=f"Bienvenido de vuelta, {self.session.nombre}",
             font=("Segoe UI", 14),
             text_color=("#7F8C8D", "#95A5A6"),
             anchor="w"
@@ -441,18 +375,15 @@ class DashboardWindow:
 
     def _crear_cards_estadisticas(self, parent):
         """Crea las tarjetas de estadísticas"""
-        # Obtener estadísticas
-        stats = self.db.obtener_estadisticas()
+        # 🔹 USAR LA BD DE LA SESIÓN
+        stats = self.session.db.obtener_estadisticas()
 
-        # Grid de estadísticas
         stats_grid = ctk.CTkFrame(parent, fg_color="transparent")
         stats_grid.pack(fill="x", pady=(0, 30))
 
-        # Configurar columnas
         for i in range(4):
             stats_grid.columnconfigure(i, weight=1)
 
-        # Definir tarjetas
         cards_data = [
             {
                 "titulo": "Disponibles",
@@ -484,12 +415,11 @@ class DashboardWindow:
             }
         ]
 
-        # Crear tarjetas
         for i, card_data in enumerate(cards_data):
             self._crear_tarjeta_stat(stats_grid, card_data, i)
 
     def _crear_tarjeta_stat(self, parent, data, column):
-        """Crea una tarjeta de estadística moderna"""
+        """Crea una tarjeta de estadística"""
         card = ctk.CTkFrame(
             parent,
             fg_color=self.COLORES['card_bg'],
@@ -645,11 +575,14 @@ class DashboardWindow:
         ctk.CTkFrame(card, fg_color="transparent", height=15).pack()
 
     def abrir_habitaciones(self):
+        if not self.session.tiene_privilegio_admin():
+            self.mostrar_acceso_denegado()
+            return
         self.limpiar_area_contenido()
-        HabitacionesWindow(self.area_contenido, self.privilegio)
+        HabitacionesWindow(self.area_contenido)
 
     def abrir_empleados(self):
-        if self.privilegio != "Administrador":
+        if not self.session.tiene_privilegio_admin():
             self.mostrar_acceso_denegado()
             return
         self.limpiar_area_contenido()
@@ -657,21 +590,22 @@ class DashboardWindow:
 
     def abrir_reservas(self):
         self.limpiar_area_contenido()
-        ReservasWindow(self.area_contenido, self.privilegio)
+        # 🔹 YA NO PASAMOS privilegio, la ventana usa session
+        ReservasWindow(self.area_contenido)
 
     def abrir_huesped(self):
         self.limpiar_area_contenido()
         HuespedesWindow(self.area_contenido)
 
     def abrir_reportes(self):
-        if self.privilegio != "Administrador":
+        if not self.session.tiene_privilegio_admin():
             self.mostrar_acceso_denegado()
             return
         self.limpiar_area_contenido()
         ReportesWindow(self.area_contenido)
 
     def abrir_configuracion(self):
-        if self.privilegio != "Administrador":
+        if not self.session.tiene_privilegio_admin():
             self.mostrar_acceso_denegado()
             return
         self.limpiar_area_contenido()
@@ -685,18 +619,12 @@ class DashboardWindow:
         content = ctk.CTkFrame(container, fg_color="transparent")
         content.place(relx=0.5, rely=0.5, anchor="center")
 
-        ctk.CTkLabel(
-            content,
-            text=icono,
-            font=("Segoe UI", 80)
-        ).pack(pady=(0, 20))
-
+        ctk.CTkLabel(content, text=icono, font=("Segoe UI", 80)).pack(pady=(0, 20))
         ctk.CTkLabel(
             content,
             text=f"Módulo de {modulo}",
             font=("Segoe UI", 28, "bold")
         ).pack(pady=(0, 10))
-
         ctk.CTkLabel(
             content,
             text="Esta funcionalidad estará disponible próximamente",
@@ -714,26 +642,19 @@ class DashboardWindow:
         content = ctk.CTkFrame(container, fg_color="transparent")
         content.place(relx=0.5, rely=0.5, anchor="center")
 
-        ctk.CTkLabel(
-            content,
-            text="🚫",
-            font=("Segoe UI", 80)
-        ).pack(pady=(0, 20))
-
+        ctk.CTkLabel(content, text="🚫", font=("Segoe UI", 80)).pack(pady=(0, 20))
         ctk.CTkLabel(
             content,
             text="ACCESO DENEGADO",
             font=("Segoe UI", 28, "bold"),
             text_color=self.COLORES['danger']
         ).pack(pady=(0, 10))
-
         ctk.CTkLabel(
             content,
             text="No tienes permisos para acceder a esta sección",
             font=("Segoe UI", 14),
             text_color=("#7F8C8D", "#95A5A6")
         ).pack(pady=(0, 5))
-
         ctk.CTkLabel(
             content,
             text="Contacta al administrador del sistema",
@@ -743,38 +664,18 @@ class DashboardWindow:
 
     def salir(self):
         """Cierra la sesión y vuelve al login"""
-        respuesta = messagebox.askyesno(
-            "Confirmar",
-            "¿Desea cerrar sesión?"
-        )
+        respuesta = messagebox.askyesno("Confirmar", "¿Desea cerrar sesión?")
 
         if respuesta:
-            # Cerrar la base de datos
-            if self.db:
-                self.db.cerrar()
-                self.db = None
-
-            # Cerrar la ventana del dashboard
             self._on_closing()
 
     def _on_closing(self):
         """Maneja el cierre de la ventana del dashboard"""
-        if self.db:
-            try:
-                self.db.cerrar()
-            except:
-                pass
+        # 🔹 CERRAR SESIÓN (esto también cierra la BD)
+        self.session.cerrar_sesion()
 
-        # Si hay referencia al login, mostrarlo de nuevo
+        # Mostrar login de nuevo
         if self.login_window:
             self.login_window._on_dashboard_close(self.root)
         else:
             self.root.destroy()
-
-    def __del__(self):
-        """Destructor para cerrar conexión a BD"""
-        if hasattr(self, 'db') and self.db:
-            try:
-                self.db.cerrar()
-            except Exception:
-                pass
