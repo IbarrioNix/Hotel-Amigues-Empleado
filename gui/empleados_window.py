@@ -35,9 +35,6 @@ class EmpleadosWindow:
         self._crear_interfaz()
         self.cargar_empleados()
 
-        # Debug: mostrar usuario activo
-        print(f"Usuario activo: {self.session.nombre}")
-
     def _crear_interfaz(self):
         """Crea la interfaz principal"""
         # Container principal

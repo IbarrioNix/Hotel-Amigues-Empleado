@@ -3,6 +3,7 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 from psycopg2 import errors
+import bcrypt
 
 load_dotenv()
 
@@ -11,7 +12,7 @@ class DatabaseManager:
     def __init__(self):
         try:
             self.conn = psycopg2.connect(
-                host=os.getenv("DB_HOST"),  # ✅ CORREGIDO
+                host=os.getenv("DB_HOST"),
                 dbname=os.getenv("DB_NAME"),
                 user=os.getenv("DB_USER"),
                 password=os.getenv("DB_PASSWORD"),
@@ -23,6 +24,26 @@ class DatabaseManager:
         except Exception as e:
             print(f"✗ Error de conexión: {e}")
             raise
+
+    # ==================== UTILIDADES DE SEGURIDAD ====================
+
+    @staticmethod
+    def hashear_password(password):
+        """Hashea una contraseña usando bcrypt"""
+        if not password:
+            return ''
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    @staticmethod
+    def verificar_password(password, password_hash):
+        """Verifica si una contraseña coincide con su hash"""
+        if not password or not password_hash:
+            return False
+        try:
+            return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        except Exception as e:
+            print(f"Error al verificar contraseña: {e}")
+            return False
 
     # ==================== HABITACIONES ====================
 
@@ -73,21 +94,33 @@ class DatabaseManager:
         return self.cursor.fetchall()
 
     def validar_login(self, usuario, password):
+        """Valida login con contraseña hasheada"""
         self.cursor.execute("""
-                            SELECT id, nombre, apellido, puesto
+                            SELECT id, nombre, apellido, puesto, password
                             FROM empleados
                             WHERE usuario = %s
-                              AND password = %s
-                            """, (usuario, password))
-        return self.cursor.fetchone()
+                            """, (usuario,))
+        resultado = self.cursor.fetchone()
+
+        if resultado and len(resultado) >= 5:
+            password_hash = resultado[4]
+            # Verificar contraseña hasheada
+            if self.verificar_password(password, password_hash):
+                return (resultado[0], resultado[1], resultado[2], resultado[3])
+
+        return None
 
     def agregar_empleado(self, nombre, apellido, puesto, telefono='', usuario='', password='', privilegio=''):
+        """Agrega un empleado con contraseña hasheada"""
         try:
+            # Hashear contraseña antes de guardar
+            password_hash = self.hashear_password(password) if password else ''
+
             self.cursor.execute("""
                                 INSERT INTO empleados
                                     (nombre, apellido, puesto, telefono, usuario, password, privilegio)
                                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-                                """, (nombre, apellido, puesto, telefono, usuario, password, privilegio))
+                                """, (nombre, apellido, puesto, telefono, usuario, password_hash, privilegio))
             self.conn.commit()
             return True
         except errors.UniqueViolation:
@@ -127,11 +160,15 @@ class DatabaseManager:
         return self.cursor.fetchone()
 
     def agregar_huesped(self, nombre, apellido, telefono, password='', email=''):
+        """Agrega un huésped con contraseña hasheada"""
         try:
+            # Hashear contraseña antes de guardar
+            password_hash = self.hashear_password(password) if password else ''
+
             self.cursor.execute("""
                                 INSERT INTO huespedes (nombre, apellido, telefono, password, email)
                                 VALUES (%s, %s, %s, %s, %s) RETURNING id
-                                """, (nombre, apellido, telefono, password, email))
+                                """, (nombre, apellido, telefono, password_hash, email))
             self.conn.commit()
             return self.cursor.fetchone()
         except errors.UniqueViolation:
@@ -308,7 +345,6 @@ class DatabaseManager:
     def obtener_reporte_habitaciones(self, fecha_inicio, fecha_fin):
         """Obtiene el historial de uso y limpieza de habitaciones"""
         try:
-            # Esta consulta combina eventos de reservas (ocupación) con cambios de estado (limpieza/mantenimiento)
             self.cursor.execute("""
                                 -- Eventos de check-in (ocupación)
                                 SELECT hab.numero,
