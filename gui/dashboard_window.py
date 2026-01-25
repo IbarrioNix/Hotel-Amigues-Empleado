@@ -14,12 +14,12 @@ class DashboardWindow:
         self.root = root
         self.login_window = login_window
 
-        # 🔹 OBTENER SESIÓN GLOBAL (ya tiene DB y datos del usuario)
+        # 🔹 OBTENER SESIÓN GLOBAL
         self.session = obtener_sesion()
 
-        # Verificar que hay sesión activa
-        if not self.session.sesion_activa:
-            messagebox.showerror("Error", "No hay sesión activa")
+        # ✅ Verificar sesión activa Y conexión a BD
+        if not self.session.sesion_activa or not self.session.db:
+            messagebox.showerror("Error", "No hay sesión activa o conexión a BD")
             if login_window:
                 self.root.destroy()
                 login_window.root.deiconify()
@@ -28,6 +28,9 @@ class DashboardWindow:
         # Configuración de ventana
         self.root.title(f"Sistema Hotel Amigues - Dashboard - {self.session.nombre_completo}")
         self.root.geometry("1400x800")
+
+        # ✅ AGREGAR: Centrar ventana
+        self._centrar_ventana()
 
         # Variables
         self.boton_activo = None
@@ -51,6 +54,29 @@ class DashboardWindow:
 
         # Protocolo de cierre
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+    # ✅ AGREGAR: Método para centrar ventana
+    def _centrar_ventana(self):
+        """Centra la ventana en la pantalla"""
+        # ✅ Forzar actualización completa antes de centrar
+        self.root.update()
+
+        # ✅ Asegurar tamaño mínimo
+        self.root.minsize(1400, 800)
+
+        # Obtener dimensiones reales
+        width = 1400  # Usar valor fijo en lugar de winfo_width()
+        height = 800  # Usar valor fijo en lugar de winfo_height()
+
+        # Calcular posición centrada
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+
+        # Aplicar geometría
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+
+        # ✅ Actualizar de nuevo para aplicar cambios
+        self.root.update_idletasks()
 
     def _crear_interfaz(self):
         """Crea la interfaz principal del dashboard"""
@@ -375,8 +401,26 @@ class DashboardWindow:
 
     def _crear_cards_estadisticas(self, parent):
         """Crea las tarjetas de estadísticas"""
-        # 🔹 USAR LA BD DE LA SESIÓN
-        stats = self.session.db.obtener_estadisticas()
+        # ✅ AGREGAR: Manejo de errores
+        try:
+            if not self.session.db:
+                raise Exception("No hay conexión a la base de datos")
+
+            stats = self.session.db.obtener_estadisticas()
+        except Exception as e:
+            print(f"Error al obtener estadísticas: {e}")
+            messagebox.showerror(
+                "Error de Datos",
+                "No se pudieron cargar las estadísticas.\n"
+                "Verifica tu conexión a la base de datos."
+            )
+            # Estadísticas por defecto
+            stats = {
+                'disponibles': 0,
+                'ocupadas': 0,
+                'limpieza': 0,
+                'empleados': 0
+            }
 
         stats_grid = ctk.CTkFrame(parent, fg_color="transparent")
         stats_grid.pack(fill="x", pady=(0, 30))
@@ -387,28 +431,28 @@ class DashboardWindow:
         cards_data = [
             {
                 "titulo": "Disponibles",
-                "valor": stats['disponibles'],
+                "valor": stats.get('disponibles', 0),  # ✅ Usar .get() por seguridad
                 "icono": "✅",
                 "color": self.COLORES['success'],
                 "subtitulo": "Habitaciones listas"
             },
             {
                 "titulo": "Ocupadas",
-                "valor": stats['ocupadas'],
+                "valor": stats.get('ocupadas', 0),
                 "icono": "🏨",
                 "color": self.COLORES['danger'],
                 "subtitulo": "En uso actualmente"
             },
             {
                 "titulo": "En Limpieza",
-                "valor": stats['limpieza'],
+                "valor": stats.get('limpieza', 0),
                 "icono": "🧹",
                 "color": self.COLORES['warning'],
                 "subtitulo": "En mantenimiento"
             },
             {
                 "titulo": "Empleados",
-                "valor": stats['empleados'],
+                "valor": stats.get('empleados', 0),
                 "icono": "👥",
                 "color": self.COLORES['info'],
                 "subtitulo": "Personal activo"
@@ -575,36 +619,77 @@ class DashboardWindow:
         ctk.CTkFrame(card, fg_color="transparent", height=15).pack()
 
     def abrir_habitaciones(self):
-        if not self.session.tiene_privilegio_admin():
-            self.mostrar_acceso_denegado()
-            return
-        self.limpiar_area_contenido()
-        HabitacionesWindow(self.area_contenido)
+        """Abre el módulo de habitaciones"""
+        # ✅ ELIMINAR verificación de admin - todos pueden ver habitaciones
+        try:
+            self.limpiar_area_contenido()
+            HabitacionesWindow(self.area_contenido)
+        except Exception as e:
+            print(f"Error al abrir habitaciones: {e}")
+            messagebox.showerror(
+                "Error",
+                "No se pudo abrir el módulo de habitaciones.\n"
+                f"Detalles: {str(e)}"
+            )
 
     def abrir_empleados(self):
+        """Abre el módulo de empleados (solo admin)"""
         if not self.session.tiene_privilegio_admin():
             self.mostrar_acceso_denegado()
             return
-        self.limpiar_area_contenido()
-        EmpleadosWindow(self.area_contenido)
+
+        try:
+            self.limpiar_area_contenido()
+            EmpleadosWindow(self.area_contenido)
+        except Exception as e:
+            print(f"Error al abrir empleados: {e}")
+            messagebox.showerror(
+                "Error",
+                f"No se pudo abrir el módulo de empleados.\n{str(e)}"
+            )
 
     def abrir_reservas(self):
-        self.limpiar_area_contenido()
-        # 🔹 YA NO PASAMOS privilegio, la ventana usa session
-        ReservasWindow(self.area_contenido)
+        """Abre el módulo de reservas"""
+        try:
+            self.limpiar_area_contenido()
+            ReservasWindow(self.area_contenido)
+        except Exception as e:
+            print(f"Error al abrir reservas: {e}")
+            messagebox.showerror(
+                "Error",
+                f"No se pudo abrir el módulo de reservas.\n{str(e)}"
+            )
 
     def abrir_huesped(self):
-        self.limpiar_area_contenido()
-        HuespedesWindow(self.area_contenido)
+        """Abre el módulo de huéspedes"""
+        try:
+            self.limpiar_area_contenido()
+            HuespedesWindow(self.area_contenido)
+        except Exception as e:
+            print(f"Error al abrir huéspedes: {e}")
+            messagebox.showerror(
+                "Error",
+                f"No se pudo abrir el módulo de huéspedes.\n{str(e)}"
+            )
 
     def abrir_reportes(self):
+        """Abre el módulo de reportes (solo admin)"""
         if not self.session.tiene_privilegio_admin():
             self.mostrar_acceso_denegado()
             return
-        self.limpiar_area_contenido()
-        ReportesWindow(self.area_contenido)
+
+        try:
+            self.limpiar_area_contenido()
+            ReportesWindow(self.area_contenido)
+        except Exception as e:
+            print(f"Error al abrir reportes: {e}")
+            messagebox.showerror(
+                "Error",
+                f"No se pudo abrir el módulo de reportes.\n{str(e)}"
+            )
 
     def abrir_configuracion(self):
+        """Abre el módulo de configuración (solo admin)"""
         if not self.session.tiene_privilegio_admin():
             self.mostrar_acceso_denegado()
             return
@@ -664,18 +749,26 @@ class DashboardWindow:
 
     def salir(self):
         """Cierra la sesión y vuelve al login"""
-        respuesta = messagebox.askyesno("Confirmar", "¿Desea cerrar sesión?")
+        respuesta = messagebox.askyesno(
+            "Confirmar Cierre de Sesión",
+            f"¿Está seguro que desea cerrar sesión, {self.session.nombre}?"
+        )
 
         if respuesta:
             self._on_closing()
 
     def _on_closing(self):
         """Maneja el cierre de la ventana del dashboard"""
-        # 🔹 CERRAR SESIÓN (esto también cierra la BD)
-        self.session.cerrar_sesion()
+        try:
+            # 🔹 CERRAR SESIÓN (esto también cierra la BD)
+            self.session.cerrar_sesion()
 
-        # Mostrar login de nuevo
-        if self.login_window:
-            self.login_window._on_dashboard_close(self.root)
-        else:
+            # Mostrar login de nuevo
+            if self.login_window:
+                self.login_window._on_dashboard_close(self.root)
+            else:
+                self.root.destroy()
+        except Exception as e:
+            print(f"Error al cerrar dashboard: {e}")
+            # ✅ Asegurar que se cierre aunque haya error
             self.root.destroy()

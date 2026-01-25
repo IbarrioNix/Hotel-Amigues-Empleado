@@ -265,6 +265,8 @@ class LoginWindow:
             border_color=("#BDC3C7", "#4A4A4A")
         )
         self.entry_usuario.pack(pady=(0, 20))
+        # ✅ AGREGAR: Al presionar Enter, ir al campo password
+        self.entry_usuario.bind('<Return>', lambda e: self.entry_password.focus())
 
     def _crear_campo_password(self, parent):
         """Crea el campo de contraseña"""
@@ -347,6 +349,12 @@ class LoginWindow:
             messagebox.showwarning("Advertencia", "El usuario debe tener al menos 3 caracteres")
             return False, "", ""
 
+        # ✅ AGREGAR: Validación de contraseña
+        if len(password) < 4:
+            messagebox.showwarning("Advertencia", "La contraseña debe tener al menos 4 caracteres")
+            self.entry_password.focus()
+            return False, "", ""
+
         return True, usuario, password
 
     def _bloquear_login(self):
@@ -367,19 +375,20 @@ class LoginWindow:
         if not es_valido:
             return
 
-        # 🔹 CONECTAR A BD SOLO AL HACER LOGIN
-        if not self.session.db:
-            conectado = self.session.conectar_db()
-            if not conectado:
-                messagebox.showwarning(
-                    "Sin conexión",
-                    "No se pudo conectar al servidor.\n"
-                    "Verifique su conexión o contacte al administrador."
-                )
-                return
+        # ✅ MEJORAR: Deshabilitar botón mientras valida
+        self.btn_login.configure(state="disabled", text="Validando...")
 
         try:
-            # Validar login
+            if not self.session.db:
+                conectado = self.session.conectar_db()
+                if not conectado:
+                    messagebox.showwarning(
+                        "Sin conexión",
+                        "No se pudo conectar al servidor.\n"
+                        "Verifique su conexión o contacte al administrador."
+                    )
+                    return
+
             empleado = self.session.db.validar_login(usuario, password)
 
             if empleado:
@@ -394,19 +403,28 @@ class LoginWindow:
                 "Ocurrió un problema al validar las credenciales.\n"
                 "Intente nuevamente."
             )
+        finally:
+            # ✅ AGREGAR: Rehabilitar botón
+            self.btn_login.configure(state="normal", text="INGRESAR")
 
     def _login_exitoso(self, empleado):
         """Maneja login exitoso"""
         empleado_id = empleado[0]
+
+        # ✅ AGREGAR: Verificar si el empleado está activo
+        estado = empleado[8] if len(empleado) > 8 else "Activo"  # Asumiendo que el estado está en índice 8
+
+        if estado != "Activo":
+            messagebox.showwarning(
+                "Acceso Denegado",
+                "Tu cuenta está inactiva.\nContacta al administrador."
+            )
+            self._limpiar_campos()
+            return
+
         privilegio = self._obtener_privilegio(empleado_id)
-
-        # 🔹 INICIAR SESIÓN EN EL SESSIONMANAGER
         self.session.iniciar_sesion(empleado, privilegio)
-
-        # Ocultar ventana de login
         self.root.withdraw()
-
-        # Abrir dashboard
         self._abrir_dashboard()
 
     def _login_fallido(self):
@@ -441,10 +459,15 @@ class LoginWindow:
 
         try:
             dashboard_window = ctk.CTkToplevel(self.root)
+
+            # ✅ SOLUCIÓN: Configurar geometría ANTES de crear el dashboard
+            dashboard_window.geometry("1400x800")
             dashboard_window.withdraw()
 
             dashboard = DashboardWindow(dashboard_window, self)
 
+            # ✅ Actualizar y mostrar
+            dashboard_window.update_idletasks()
             dashboard_window.deiconify()
             dashboard_window.protocol("WM_DELETE_WINDOW", lambda: self._on_dashboard_close(dashboard_window))
 
@@ -466,6 +489,7 @@ class LoginWindow:
 
     def _on_closing(self):
         """Maneja cierre de la ventana"""
-        # 🔹 CERRAR SESIÓN AL SALIR
-        self.session.cerrar_sesion()
-        self.root.quit()
+        # ✅ CORREGIR: Usar destroy() en lugar de quit()
+        if messagebox.askokcancel("Salir", "¿Estás seguro de que deseas salir?"):
+            self.session.cerrar_sesion()
+            self.root.destroy()

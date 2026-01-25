@@ -1,7 +1,6 @@
 # gui/empleados_window.py
 import customtkinter as ctk
 from tkinter import messagebox
-from database.db_manager import DatabaseManager
 from core.session import obtener_sesion
 from typing import Optional, List, Tuple
 
